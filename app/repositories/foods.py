@@ -84,7 +84,7 @@ class FoodRepository:
         placeholders = ", ".join(["?"] * len(values))
         cols = ", ".join(fields)
         cur = self.conn.execute(
-            f"INSERT INTO foods ({cols}) VALUES ({placeholders})", values
+            f"INSERT OR REPLACE INTO foods ({cols}) VALUES ({placeholders})", values
         )
         return cur.lastrowid
 
