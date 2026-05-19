@@ -29,6 +29,9 @@ app.include_router(stats_router)
 from app.routes.weight import router as weight_router
 app.include_router(weight_router)
 
+from app.routes.recipes import router as recipes_router
+app.include_router(recipes_router)
+
 
 @app.get("/health")
 def health():
