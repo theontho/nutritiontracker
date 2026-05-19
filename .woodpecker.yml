@@ -36,7 +36,7 @@ steps:
       - echo "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
       - chmod 600 ~/.ssh/id_ed25519
       - printf "Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n" > ~/.ssh/config
-      - printf "NT_BEARER_TOKEN=%s\nCLOUDFLARE_TUNNEL_TOKEN=%s\n" "$NT_BEARER_TOKEN" "$CLOUDFLARE_TUNNEL_TOKEN" > .kamal/secrets
+      - printf "NT_BEARER_TOKEN=%s\nCLOUDFLARE_TUNNEL_TOKEN=%s\nKAMAL_REGISTRY_PASSWORD=%s\n" "$NT_BEARER_TOKEN" "$CLOUDFLARE_TUNNEL_TOKEN" "$KAMAL_REGISTRY_PASSWORD" > .kamal/secrets
       - kamal deploy
     environment:
       DEPLOY_SSH_KEY:
@@ -45,6 +45,8 @@ steps:
         from_secret: NT_BEARER_TOKEN
       CLOUDFLARE_TUNNEL_TOKEN:
         from_secret: CLOUDFLARE_TUNNEL_TOKEN
+      KAMAL_REGISTRY_PASSWORD:
+        from_secret: KAMAL_REGISTRY_PASSWORD
     depends_on:
       - test
     when:
