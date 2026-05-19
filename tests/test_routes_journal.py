@@ -89,3 +89,32 @@ def test_delete_journal_entry(client):
 def test_delete_journal_entry_not_found(client):
     r = client.delete("/journal/9999")
     assert r.status_code == 404
+
+
+def test_create_journal_entry_score_out_of_range(client):
+    r = client.post("/journal", json={
+        "date": "2026-05-19",
+        "body": "Test.",
+        "mood_score": 0,
+    })
+    assert r.status_code == 422
+
+
+def test_create_journal_entry_score_too_high(client):
+    r = client.post("/journal", json={
+        "date": "2026-05-19",
+        "body": "Test.",
+        "stress_score": 11,
+    })
+    assert r.status_code == 422
+
+
+def test_create_journal_entry_score_boundary_valid(client):
+    r = client.post("/journal", json={
+        "date": "2026-05-19",
+        "body": "Test.",
+        "mood_score": 1,
+        "stress_score": 10,
+        "sleep_quality": 5,
+    })
+    assert r.status_code == 201

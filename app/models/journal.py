@@ -6,17 +6,17 @@ class JournalEntryCreate(BaseModel):
     date: str
     body: str
     tags: list[str] = Field(default_factory=list)
-    mood_score: Optional[int] = None
-    stress_score: Optional[int] = None
-    sleep_quality: Optional[int] = None
+    mood_score: Optional[int] = Field(default=None, ge=1, le=10)
+    stress_score: Optional[int] = Field(default=None, ge=1, le=10)
+    sleep_quality: Optional[int] = Field(default=None, ge=1, le=10)
 
 
 class JournalEntryUpdate(BaseModel):
     body: Optional[str] = None
     tags: Optional[list[str]] = None
-    mood_score: Optional[int] = None
-    stress_score: Optional[int] = None
-    sleep_quality: Optional[int] = None
+    mood_score: Optional[int] = Field(default=None, ge=1, le=10)
+    stress_score: Optional[int] = Field(default=None, ge=1, le=10)
+    sleep_quality: Optional[int] = Field(default=None, ge=1, le=10)
 
 
 class JournalEntry(BaseModel):
