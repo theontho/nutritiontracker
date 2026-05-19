@@ -20,6 +20,9 @@ app = FastAPI(title="Nutrition Tracker", version=settings.api_version, lifespan=
 from app.routes.foods import router as foods_router
 app.include_router(foods_router)
 
+from app.routes.diary import router as diary_router
+app.include_router(diary_router)
+
 
 @app.get("/health")
 def health():
