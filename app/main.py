@@ -22,7 +22,27 @@ async def lifespan(app: FastAPI):
     conn.close()
 
 
-app = FastAPI(title="Nutrition Tracker", version=settings.api_version, lifespan=lifespan)
+app = FastAPI(
+    title="Nutrition Tracker",
+    version=settings.api_version,
+    description="""Open-source REST API for nutrition tracking.
+
+Designed to be called by AI agents to log and query nutrition data.
+
+**Data sources:** Pre-loaded USDA FoodData Central and OpenFoodFacts databases.
+
+**Key endpoints:**
+- `/foods/search` — search 500k+ foods by name with prefix matching
+- `/foods/barcode/{barcode}` — look up by EAN/UPC barcode
+- `/diary/{date}/entries` — log what you ate
+- `/stats/daily/{date}` — get today's nutrition totals
+- `/weight` — track body weight
+- `/recipes` — build recipes with auto-computed nutrition math
+
+**Schema:** Full OpenAPI 3.0 schema at `/openapi.json`.
+""",
+    lifespan=lifespan,
+)
 
 app.include_router(foods_router)
 app.include_router(diary_router)

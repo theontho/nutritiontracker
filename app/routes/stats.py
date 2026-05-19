@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request
 from app.models.food import NutrientsPer100
+from app.models.stats import DailyStats, RangeDailyStats
 from app.repositories.diary import DiaryRepository
 from app.config import settings
 
@@ -34,15 +35,17 @@ def _compute_daily(entries: list[dict], date: str) -> dict:
     }
 
 
-@router.get("/daily/{date}")
+@router.get("/daily/{date}", response_model=DailyStats, summary="Daily nutrition summary")
 def daily_stats(request: Request, date: str):
+    """Get total nutrients and per-meal breakdown for a given date. All four meal types (breakfast, lunch, dinner, snack) are always included — meals with no entries show zero values."""
     diary = DiaryRepository(request.app.state.db)
     entries = diary.list_by_date(user_id=settings.default_user_id, date=date)
     return _compute_daily(entries, date)
 
 
-@router.get("/range")
+@router.get("/range", response_model=list[RangeDailyStats], summary="Nutrition summary over a date range")
 def range_stats(request: Request, start: str, end: str):
+    """Get daily nutrition totals for a date range (YYYY-MM-DD). Only days with diary entries are included. Useful for trend analysis."""
     diary = DiaryRepository(request.app.state.db)
     rows = request.app.state.db.execute(
         """SELECT DISTINCT date FROM diary_entries

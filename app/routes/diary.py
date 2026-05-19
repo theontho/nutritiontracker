@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
-from app.models.diary import DiaryEntryCreate, DiaryEntryUpdate
+from app.models.diary import DiaryEntryCreate, DiaryEntryUpdate, DiaryEntry
 from app.repositories.diary import DiaryRepository
 from app.repositories.foods import FoodRepository
 from app.services.diary import compute_entry_nutrients, build_food_snapshot
@@ -17,15 +17,17 @@ def _food_repo(request: Request) -> FoodRepository:
     return FoodRepository(request.app.state.db)
 
 
-@router.get("/diary/{date}")
+@router.get("/diary/{date}", response_model=list[DiaryEntry], summary="List diary entries for a date")
 def list_entries(request: Request, date: str):
+    """Get all diary entries for the given date (YYYY-MM-DD format)."""
     return _diary_repo(request).list_by_date(
         user_id=settings.default_user_id, date=date
     )
 
 
-@router.post("/diary/{date}/entries", status_code=201)
+@router.post("/diary/{date}/entries", status_code=201, response_model=DiaryEntry, summary="Log a food diary entry")
 def create_entry(request: Request, date: str, body: DiaryEntryCreate):
+    """Log a food to the diary. Automatically converts the amount to grams, computes nutrient totals, and snapshots the food record."""
     food_repo = _food_repo(request)
     food = food_repo.get(body.food_id)
     if not food:
@@ -51,8 +53,9 @@ def create_entry(request: Request, date: str, body: DiaryEntryCreate):
     return diary_repo.get(entry_id)
 
 
-@router.patch("/diary/entries/{entry_id}")
+@router.patch("/diary/entries/{entry_id}", response_model=DiaryEntry, summary="Update a diary entry")
 def update_entry(request: Request, entry_id: int, body: DiaryEntryUpdate):
+    """Update the amount, unit, or meal type of a diary entry. Nutrient totals are recomputed if amount or unit changes."""
     diary_repo = _diary_repo(request)
     entry = diary_repo.get(entry_id)
     if not entry:
@@ -76,7 +79,8 @@ def update_entry(request: Request, entry_id: int, body: DiaryEntryUpdate):
     return diary_repo.get(entry_id)
 
 
-@router.delete("/diary/entries/{entry_id}", status_code=204)
+@router.delete("/diary/entries/{entry_id}", status_code=204, summary="Delete a diary entry")
 def delete_entry(request: Request, entry_id: int):
+    """Delete a diary entry by ID."""
     if not _diary_repo(request).delete(entry_id):
         raise HTTPException(404, "Entry not found")

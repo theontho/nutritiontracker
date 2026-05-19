@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
-from app.models.recipe import RecipeCreate, RecipeUpdate
+from app.models.recipe import RecipeCreate, RecipeUpdate, Recipe
 from app.repositories.recipes import RecipeRepository
 from app.repositories.foods import FoodRepository
 from app.services.recipe_nutrition import compute_recipe_nutrients
@@ -40,8 +40,9 @@ def _resolve_ingredients(food_repo: FoodRepository, ingredients_input: list) -> 
     return resolved
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=Recipe, summary="Create recipe")
 def create_recipe(request: Request, body: RecipeCreate):
+    """Create a recipe from a list of food ingredients. Automatically resolves each ingredient's food record, converts units to grams, and computes per-100g and per-serving nutrient totals."""
     food_repo = _food_repo(request)
     recipe_repo = _recipe_repo(request)
 
@@ -61,23 +62,26 @@ def create_recipe(request: Request, body: RecipeCreate):
     return recipe_repo.get(recipe_id)
 
 
-@router.get("")
+@router.get("", response_model=list[Recipe], summary="List recipes")
 def list_recipes(request: Request, limit: int = 20, offset: int = 0):
+    """List all recipes, ordered by most recently created."""
     return _recipe_repo(request).list_all(
         user_id=settings.default_user_id, limit=limit, offset=offset
     )
 
 
-@router.get("/{recipe_id}")
+@router.get("/{recipe_id}", response_model=Recipe, summary="Get recipe by ID")
 def get_recipe(request: Request, recipe_id: int):
+    """Get a single recipe by ID."""
     recipe = _recipe_repo(request).get(recipe_id)
     if not recipe:
         raise HTTPException(404, "Recipe not found")
     return recipe
 
 
-@router.patch("/{recipe_id}")
+@router.patch("/{recipe_id}", response_model=Recipe, summary="Update recipe")
 def update_recipe(request: Request, recipe_id: int, body: RecipeUpdate):
+    """Update a recipe. If ingredients are updated, nutrient totals are recomputed."""
     recipe_repo = _recipe_repo(request)
     recipe = recipe_repo.get(recipe_id)
     if not recipe:
@@ -98,7 +102,8 @@ def update_recipe(request: Request, recipe_id: int, body: RecipeUpdate):
     return recipe_repo.get(recipe_id)
 
 
-@router.delete("/{recipe_id}", status_code=204)
+@router.delete("/{recipe_id}", status_code=204, summary="Delete recipe")
 def delete_recipe(request: Request, recipe_id: int):
+    """Delete a recipe."""
     if not _recipe_repo(request).delete(recipe_id):
         raise HTTPException(404, "Recipe not found")
