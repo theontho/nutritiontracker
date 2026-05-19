@@ -5,8 +5,10 @@ from fastapi import FastAPI
 from app.config import settings
 from app.database import get_connection, init_schema
 from app.repositories.foods import FoodRepository
+from app.routes.activity import router as activity_router
 from app.routes.diary import router as diary_router
 from app.routes.foods import router as foods_router
+from app.routes.imports import router as imports_router
 from app.routes.recipes import router as recipes_router
 from app.routes.stats import router as stats_router
 from app.routes.weight import router as weight_router
@@ -49,6 +51,8 @@ app.include_router(diary_router)
 app.include_router(stats_router)
 app.include_router(weight_router)
 app.include_router(recipes_router)
+app.include_router(activity_router)
+app.include_router(imports_router)
 
 
 @app.get("/health")

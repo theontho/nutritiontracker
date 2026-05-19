@@ -96,4 +96,34 @@ def init_schema(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_foods_source_code ON foods(source, source_code);
         CREATE INDEX IF NOT EXISTS idx_diary_user_date ON diary_entries(user_id, date);
         CREATE INDEX IF NOT EXISTS idx_weight_user_date ON weight_entries(user_id, date);
+
+        CREATE TABLE IF NOT EXISTS step_observations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL DEFAULT 1,
+            source TEXT NOT NULL,
+            observed_at TEXT NOT NULL,
+            local_date TEXT NOT NULL,
+            period_start TEXT NOT NULL,
+            period_end TEXT NOT NULL,
+            steps_total_today INTEGER NOT NULL,
+            timezone TEXT NOT NULL,
+            raw_payload TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS daily_activity (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL DEFAULT 1,
+            date TEXT NOT NULL,
+            source TEXT NOT NULL,
+            steps INTEGER NOT NULL,
+            last_observed_at TEXT NOT NULL,
+            anomaly_flag INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(user_id, date, source)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_step_obs_user_date ON step_observations(user_id, local_date);
+        CREATE INDEX IF NOT EXISTS idx_daily_activity_user_date ON daily_activity(user_id, date);
     """)
