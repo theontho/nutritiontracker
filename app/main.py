@@ -59,6 +59,6 @@ app.include_router(activity_router)
 app.include_router(imports_router)
 
 
-@app.get("/health")
+@app.get("/health", dependencies=[])
 def health():
     return {"status": "ok", "version": settings.api_version}
