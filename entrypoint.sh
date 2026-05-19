@@ -24,5 +24,8 @@ else
     echo "Database already exists at $DB_PATH, skipping seed."
 fi
 
+echo "Running database migrations..."
+alembic upgrade head
+
 echo "Starting server..."
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000
