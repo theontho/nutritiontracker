@@ -36,7 +36,7 @@ steps:
       - echo "$DEPLOY_SSH_KEY" > ~/.ssh/stupidclaw_garageband_ed25519
       - chmod 600 ~/.ssh/stupidclaw_garageband_ed25519
       - printf "Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n" > ~/.ssh/config
-      - printf "NT_BEARER_TOKEN=%s\nCLOUDFLARE_TUNNEL_TOKEN=%s\nKAMAL_REGISTRY_PASSWORD=%s\n" "$NT_BEARER_TOKEN" "$CLOUDFLARE_TUNNEL_TOKEN" "$KAMAL_REGISTRY_PASSWORD" > .kamal/secrets
+      - printf "NT_BEARER_TOKEN=%s\nTUNNEL_TOKEN=%s\nKAMAL_REGISTRY_PASSWORD=%s\n" "$NT_BEARER_TOKEN" "$CLOUDFLARE_TUNNEL_TOKEN" "$KAMAL_REGISTRY_PASSWORD" > .kamal/secrets
       - kamal deploy
       - kamal accessory boot cloudflared 2>/dev/null || kamal accessory reboot cloudflared
     environment:
