@@ -17,6 +17,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Nutrition Tracker", version=settings.api_version, lifespan=lifespan)
 
+from app.routes.foods import router as foods_router
+app.include_router(foods_router)
+
 
 @app.get("/health")
 def health():
