@@ -26,11 +26,11 @@ steps:
       event: [push, pull_request, manual, tag]
 
   deploy:
-    image: ruby:3.3-slim
+    image: ruby:3.3-alpine
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     commands:
-      - apt-get update -qq && apt-get install -y -qq openssh-client curl git
+      - apk add --no-cache openssh-client curl git docker-cli
       - gem install kamal --no-document -q
       - mkdir -p ~/.ssh
       - echo "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
