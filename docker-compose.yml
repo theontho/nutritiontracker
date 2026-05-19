@@ -1,0 +1,22 @@
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      NT_DB_PATH: /data/nutrition.db
+      NT_BEARER_TOKEN: ${NT_BEARER_TOKEN}
+    volumes:
+      - ./data:/data
+    env_file:
+      - .env
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - api
