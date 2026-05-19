@@ -27,11 +27,12 @@ def _post(path: str, body: dict) -> dict | list:
 
 
 def _parse_set(s: str) -> dict:
-    """Parse shorthand like '135x8', '60kgx5', 'bwx12', '60s'."""
+    """Parse shorthand like '135x8', '60kgx5', 'bwx12', '60s', 'plank 60s'."""
     s = s.strip()
-    # timed: '60s' (with no 'x')
-    if re.match(r"^\d+s$", s, re.IGNORECASE):
-        return {"duration_seconds": int(s[:-1]), "reps": None}
+    # timed: '60s' or 'plank 60s' (optional leading word stripped)
+    m_timed = re.match(r"^(?:[a-zA-Z]+\s+)?(\d+)s$", s, re.IGNORECASE)
+    if m_timed and "x" not in s:
+        return {"duration_seconds": int(m_timed.group(1)), "reps": None}
     # weight x reps: '135x8', '60kgx5', 'bwx12'
     m = re.match(r"^(bw|(\d+(?:\.\d+)?)(kg|lb)?)x(\d+(?:\.\d+)?)$", s, re.IGNORECASE)
     if m:
@@ -187,7 +188,8 @@ def progress(exercise, agent):
 @click.option("--notes", default=None)
 @click.option("--energy", default=None, type=int)
 @click.option("--soreness", default=None, type=int)
-def close(session_id, notes, energy, soreness):
+@click.option("--stress", default=None, type=int)
+def close(session_id, notes, energy, soreness, stress):
     """Close out the current workout session."""
     if session_id is None:
         session_id = _today_open_session()
@@ -200,6 +202,8 @@ def close(session_id, notes, energy, soreness):
         body["energy_score"] = energy
     if soreness:
         body["soreness_score"] = soreness
+    if stress:
+        body["stress_score"] = stress
     result = _post(f"/workouts/sessions/{session_id}/close", body)
     click.echo(f"Session {result['id']} closed at {result['ended_at']}")
     if notes:

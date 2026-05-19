@@ -1,4 +1,5 @@
 import click
+from app.cli.exercises import exercises
 from app.cli.workout import workout
 
 
@@ -8,4 +9,5 @@ def cli():
     pass
 
 
+cli.add_command(exercises)
 cli.add_command(workout)
