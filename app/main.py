@@ -11,6 +11,7 @@ from app.routes.foods import router as foods_router
 from app.routes.imports import router as imports_router
 from app.routes.recipes import router as recipes_router
 from app.routes.stats import router as stats_router
+from app.routes.journal import router as journal_router
 from app.routes.weight import router as weight_router
 
 
@@ -49,6 +50,7 @@ Designed to be called by AI agents to log and query nutrition data.
 app.include_router(foods_router)
 app.include_router(diary_router)
 app.include_router(stats_router)
+app.include_router(journal_router)
 app.include_router(weight_router)
 app.include_router(recipes_router)
 app.include_router(activity_router)

@@ -97,6 +97,21 @@ def init_schema(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_diary_user_date ON diary_entries(user_id, date);
         CREATE INDEX IF NOT EXISTS idx_weight_user_date ON weight_entries(user_id, date);
 
+        CREATE TABLE IF NOT EXISTS journal_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL DEFAULT 1,
+            date TEXT NOT NULL,
+            body TEXT NOT NULL,
+            tags TEXT NOT NULL DEFAULT '[]',
+            mood_score INTEGER,
+            stress_score INTEGER,
+            sleep_quality INTEGER,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_journal_user_date ON journal_entries(user_id, date);
+
         CREATE TABLE IF NOT EXISTS step_observations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL DEFAULT 1,
