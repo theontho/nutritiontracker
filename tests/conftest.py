@@ -16,7 +16,7 @@ def db():
 
 
 @pytest.fixture
-def client(db):
-    app.state.db = db
+def client(db, monkeypatch):
+    monkeypatch.setattr("app.database.get_connection", lambda *args, **kwargs: db)
     with TestClient(app) as c:
         yield c
