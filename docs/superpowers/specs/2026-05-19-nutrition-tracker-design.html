@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nutrition Tracker API — Design Spec</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-subtle: #1f6feb22;
+      --green: #3fb950;
+      --orange: #d29922;
+      --code-bg: #1c2128;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+    h1 {
+      font-size: 2rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.75rem;
+    }
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-top: 2.5rem;
+      margin-bottom: 1rem;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.4rem;
+    }
+    h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-top: 1.75rem;
+      margin-bottom: 0.75rem;
+    }
+    p { margin-bottom: 1rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.25rem;
+      font-size: 0.9rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+    }
+    th {
+      background: var(--surface);
+      font-weight: 600;
+      color: var(--accent);
+    }
+    td { background: var(--bg); }
+    tr:hover td { background: var(--accent-subtle); }
+    code {
+      font-family: 'SF Mono', 'Fira Code', 'Fira Mono', Menlo, monospace;
+      font-size: 0.85em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      margin-bottom: 1.25rem;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: inherit;
+    }
+    ul, ol {
+      margin-bottom: 1rem;
+      padding-left: 1.5rem;
+    }
+    li { margin-bottom: 0.35rem; }
+    .overview {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin: 1.25rem 0;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.15em 0.6em;
+      border-radius: 12px;
+      margin-right: 0.3rem;
+    }
+    .badge-get { background: #1f6feb33; color: var(--accent); }
+    .badge-post { background: #3fb95033; color: var(--green); }
+    .badge-patch { background: #d2992233; color: var(--orange); }
+    .badge-delete { background: #f8514933; color: #f85149; }
+    .endpoint-group {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .endpoint {
+      font-family: 'SF Mono', monospace;
+      font-size: 0.85rem;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .endpoint:last-child { border-bottom: none; }
+    .endpoint-comment {
+      color: var(--text-muted);
+      font-family: -apple-system, sans-serif;
+      font-size: 0.8rem;
+      margin-left: 0.5rem;
+    }
+    .build-order {
+      counter-reset: step;
+      list-style: none;
+      padding-left: 0;
+    }
+    .build-order li {
+      counter-increment: step;
+      position: relative;
+      padding-left: 2.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .build-order li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      width: 1.75rem;
+      height: 1.75rem;
+      background: var(--accent);
+      color: var(--bg);
+      font-weight: 700;
+      font-size: 0.85rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tree {
+      font-family: 'SF Mono', monospace;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+    .deferred {
+      background: #d2992215;
+      border: 1px solid #d2992244;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .decision {
+      background: var(--surface);
+      border-left: 3px solid var(--accent);
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.75rem;
+      border-radius: 0 6px 6px 0;
+    }
+    .decision strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<h1>Nutrition Tracker API — Design Spec</h1>
+
+<div class="overview">
+  <p>An open-source REST API for nutrition tracking, built with <strong>FastAPI</strong> and <strong>SQLite</strong>. Uses pre-loaded USDA FoodData Central and OpenFoodFacts databases for food lookup. Designed to be called by AI agents to log and query nutrition data.</p>
+</div>
+
+<h2>Core Data Model</h2>
+
+<h3>Food</h3>
+<table>
+  <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>id</code></td><td>int</td><td>Primary key</td></tr>
+    <tr><td><code>source</code></td><td>enum</td><td>custom, open_food_facts, food_data_central, recipe</td></tr>
+    <tr><td><code>source_code</code></td><td>str</td><td>External ID from source</td></tr>
+    <tr><td><code>name</code></td><td>str</td><td>Food name</td></tr>
+    <tr><td><code>brand</code></td><td>str</td><td>Nullable, for packaged foods</td></tr>
+    <tr><td><code>barcode</code></td><td>str</td><td>Nullable, EAN/UPC</td></tr>
+    <tr><td><code>image_url</code></td><td>str</td><td>Nullable</td></tr>
+    <tr><td><code>serving_quantity</code></td><td>float</td><td>e.g. 1</td></tr>
+    <tr><td><code>serving_unit</code></td><td>str</td><td>e.g. "cup", "slice"</td></tr>
+    <tr><td><code>serving_size_text</code></td><td>str</td><td>Human-readable serving description</td></tr>
+    <tr><td><code>base_quantity</code></td><td>float</td><td>Always 100</td></tr>
+    <tr><td><code>base_unit</code></td><td>str</td><td>g or ml</td></tr>
+    <tr><td><code>density_g_per_ml</code></td><td>float</td><td>Nullable, for volume-to-weight conversion</td></tr>
+    <tr><td><code>nutrients_per_100</code></td><td>FK</td><td>Link to NutrientsPer100</td></tr>
+    <tr><td><code>created_at</code></td><td>datetime</td><td>Timestamp</td></tr>
+    <tr><td><code>updated_at</code></td><td>datetime</td><td>Timestamp</td></tr>
+  </tbody>
+</table>
+
+<h3>NutrientsPer100</h3>
+<table>
+  <thead><tr><th>Field</th><th>Type</th></tr></thead>
+  <tbody>
+    <tr><td><code>calories_kcal</code></td><td>float</td></tr>
+    <tr><td><code>protein_g</code></td><td>float</td></tr>
+    <tr><td><code>carbs_g</code></td><td>float</td></tr>
+    <tr><td><code>fat_g</code></td><td>float</td></tr>
+    <tr><td><code>sugar_g</code></td><td>float</td></tr>
+    <tr><td><code>saturated_fat_g</code></td><td>float</td></tr>
+    <tr><td><code>fiber_g</code></td><td>float</td></tr>
+    <tr><td><code>sodium_mg</code></td><td>float</td></tr>
+    <tr><td><code>potassium_mg</code></td><td>float</td></tr>
+    <tr><td><code>calcium_mg</code></td><td>float</td></tr>
+    <tr><td><code>iron_mg</code></td><td>float</td></tr>
+    <tr><td><code>magnesium_mg</code></td><td>float</td></tr>
+    <tr><td><code>zinc_mg</code></td><td>float</td></tr>
+    <tr><td><code>phosphorus_mg</code></td><td>float</td></tr>
+    <tr><td><code>vitamin_a_ug</code></td><td>float</td></tr>
+    <tr><td><code>vitamin_c_mg</code></td><td>float</td></tr>
+    <tr><td><code>vitamin_d_ug</code></td><td>float</td></tr>
+    <tr><td><code>vitamin_b6_mg</code></td><td>float</td></tr>
+    <tr><td><code>vitamin_b12_ug</code></td><td>float</td></tr>
+    <tr><td><code>niacin_mg</code></td><td>float</td></tr>
+  </tbody>
+</table>
+
+<h3>DiaryEntry</h3>
+<table>
+  <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>id</code></td><td>int</td><td>Primary key</td></tr>
+    <tr><td><code>user_id</code></td><td>int</td><td>User reference</td></tr>
+    <tr><td><code>date</code></td><td>date</td><td>Entry date</td></tr>
+    <tr><td><code>meal_type</code></td><td>enum</td><td>breakfast, lunch, dinner, snack</td></tr>
+    <tr><td><code>food_id</code></td><td>int</td><td>FK to Food</td></tr>
+    <tr><td><code>food_snapshot</code></td><td>JSON</td><td>Full food data at time of logging</td></tr>
+    <tr><td><code>amount</code></td><td>float</td><td>How much was consumed</td></tr>
+    <tr><td><code>unit</code></td><td>str</td><td>Unit of measurement</td></tr>
+    <tr><td><code>grams</code></td><td>float</td><td>Converted weight in grams</td></tr>
+    <tr><td><code>nutrients_total</code></td><td>JSON</td><td>Computed nutrients for this entry</td></tr>
+    <tr><td><code>created_at</code></td><td>datetime</td><td>Timestamp</td></tr>
+    <tr><td><code>updated_at</code></td><td>datetime</td><td>Timestamp</td></tr>
+  </tbody>
+</table>
+<p>The <code>food_snapshot</code> captures the full food record at time of logging. Historical diary entries do not change when an external source updates a label.</p>
+
+<h3>Recipe</h3>
+<table>
+  <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>id</code></td><td>int</td><td>Primary key</td></tr>
+    <tr><td><code>user_id</code></td><td>int</td><td>User reference</td></tr>
+    <tr><td><code>name</code></td><td>str</td><td>Recipe name</td></tr>
+    <tr><td><code>servings</code></td><td>float</td><td>Number of servings</td></tr>
+    <tr><td><code>total_weight_g</code></td><td>float</td><td>Total weight</td></tr>
+    <tr><td><code>ingredients</code></td><td>list</td><td>List of RecipeIngredient</td></tr>
+    <tr><td><code>nutrients_per_100</code></td><td>JSON</td><td>Computed per 100g</td></tr>
+    <tr><td><code>nutrients_per_serving</code></td><td>JSON</td><td>Computed per serving</td></tr>
+    <tr><td><code>created_at</code></td><td>datetime</td><td>Timestamp</td></tr>
+    <tr><td><code>updated_at</code></td><td>datetime</td><td>Timestamp</td></tr>
+  </tbody>
+</table>
+
+<h3>RecipeIngredient</h3>
+<table>
+  <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>food_id</code></td><td>int</td><td>FK to source Food</td></tr>
+    <tr><td><code>food_snapshot</code></td><td>JSON</td><td>Food data at time of creation</td></tr>
+    <tr><td><code>amount</code></td><td>float</td><td>Quantity</td></tr>
+    <tr><td><code>unit</code></td><td>str</td><td>Unit of measurement</td></tr>
+    <tr><td><code>grams</code></td><td>float</td><td>Converted weight in grams</td></tr>
+  </tbody>
+</table>
+
+<h3>WeightEntry</h3>
+<table>
+  <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>id</code></td><td>int</td><td>Primary key</td></tr>
+    <tr><td><code>user_id</code></td><td>int</td><td>User reference</td></tr>
+    <tr><td><code>date</code></td><td>date</td><td>Entry date</td></tr>
+    <tr><td><code>weight_kg</code></td><td>float</td><td>Body weight in kg</td></tr>
+    <tr><td><code>notes</code></td><td>str</td><td>Nullable</td></tr>
+    <tr><td><code>created_at</code></td><td>datetime</td><td>Timestamp</td></tr>
+    <tr><td><code>updated_at</code></td><td>datetime</td><td>Timestamp</td></tr>
+  </tbody>
+</table>
+
+<h3>StepObservation</h3>
+<table>
+  <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>id</code></td><td>int</td><td>Primary key</td></tr>
+    <tr><td><code>user_id</code></td><td>int</td><td>User reference</td></tr>
+    <tr><td><code>source</code></td><td>str</td><td>e.g. apple_shortcuts</td></tr>
+    <tr><td><code>observed_at</code></td><td>datetime</td><td>When the phone sent the observation</td></tr>
+    <tr><td><code>local_date</code></td><td>date</td><td>Date in the user's timezone</td></tr>
+    <tr><td><code>period_start</code></td><td>datetime</td><td>Start of the cumulative measurement window</td></tr>
+    <tr><td><code>period_end</code></td><td>datetime</td><td>End of the cumulative measurement window</td></tr>
+    <tr><td><code>steps_total_today</code></td><td>int</td><td>Cumulative day-to-date step count</td></tr>
+    <tr><td><code>timezone</code></td><td>str</td><td>e.g. America/Los_Angeles</td></tr>
+    <tr><td><code>raw_payload</code></td><td>JSON</td><td>Original request body for audit/debugging</td></tr>
+    <tr><td><code>created_at</code></td><td>datetime</td><td>Timestamp</td></tr>
+  </tbody>
+</table>
+
+<h3>DailyActivity</h3>
+<table>
+  <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>id</code></td><td>int</td><td>Primary key</td></tr>
+    <tr><td><code>user_id</code></td><td>int</td><td>User reference</td></tr>
+    <tr><td><code>date</code></td><td>date</td><td>Local date</td></tr>
+    <tr><td><code>source</code></td><td>str</td><td>e.g. apple_shortcuts</td></tr>
+    <tr><td><code>steps</code></td><td>int</td><td>Normalized daily step total</td></tr>
+    <tr><td><code>last_observed_at</code></td><td>datetime</td><td>Latest observation used for the daily total</td></tr>
+    <tr><td><code>anomaly_flag</code></td><td>bool</td><td>True when a later observation reports a lower total</td></tr>
+    <tr><td><code>created_at</code></td><td>datetime</td><td>Timestamp</td></tr>
+    <tr><td><code>updated_at</code></td><td>datetime</td><td>Timestamp</td></tr>
+  </tbody>
+</table>
+<p>Step sync is designed for Apple Shortcuts hourly automations. The shortcut sends the current cumulative step total for the local day. The API stores every observation and updates <code>DailyActivity</code> with the latest valid day-to-date total.</p>
+
+<h3>JournalEntry</h3>
+<table>
+  <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>id</code></td><td>int</td><td>Primary key</td></tr>
+    <tr><td><code>user_id</code></td><td>int</td><td>User reference</td></tr>
+    <tr><td><code>date</code></td><td>date</td><td>Entry date</td></tr>
+    <tr><td><code>body</code></td><td>str</td><td>Freeform daily note</td></tr>
+    <tr><td><code>tags</code></td><td>JSON</td><td>Optional list of short labels</td></tr>
+    <tr><td><code>mood_score</code></td><td>int</td><td>Nullable, 1-10</td></tr>
+    <tr><td><code>stress_score</code></td><td>int</td><td>Nullable, 1-10</td></tr>
+    <tr><td><code>sleep_quality</code></td><td>int</td><td>Nullable, 1-10</td></tr>
+    <tr><td><code>created_at</code></td><td>datetime</td><td>Timestamp</td></tr>
+    <tr><td><code>updated_at</code></td><td>datetime</td><td>Timestamp</td></tr>
+  </tbody>
+</table>
+<p>Journal entries provide lightweight day context for recovery tracking. The API should support freeform notes without requiring structured mood, stress, or sleep fields.</p>
+
+<h3>Recipe Computation</h3>
+<pre><code>for each ingredient:
+  grams = convert_to_grams(amount, unit, serving_quantity_if_needed)
+  nutrient_total += food.nutrients_per_100 * grams / 100
+
+recipe_nutrients_per_100 = nutrient_total * 100 / total_weight_g
+recipe_nutrients_per_serving = nutrient_total / servings</code></pre>
+
+<h2>Unit Conversion</h2>
+<p>Supported units for diary entries and recipe ingredients:</p>
+<ul>
+  <li><strong>Weight:</strong> g, kg, oz, lb</li>
+  <li><strong>Volume:</strong> ml, l, cup, tbsp, tsp, fl_oz</li>
+  <li><strong>Portions:</strong> serving, piece, slice</li>
+</ul>
+<p>Weight units convert directly. Volume-to-weight conversion uses a density lookup per food (stored as an optional field or derived from serving data). If density is unavailable, fall back to water density (1 g/ml) and flag the conversion as approximate. "Serving" uses the food's <code>serving_quantity</code> and <code>serving_unit</code> to resolve to grams.</p>
+
+<h2>External Data Sources</h2>
+
+<h3>Pre-loaded Databases</h3>
+<p>Both USDA FoodData Central and OpenFoodFacts data are bulk-imported into SQLite at setup time via import scripts. No live API calls are made at query time.</p>
+
+<h3>Provider Normalization</h3>
+<p>Each source has a normalization module that transforms raw bulk data into the internal Food model during import. External data shapes do not leak past the provider layer.</p>
+<ul>
+  <li><code>providers/open_food_facts.py</code> — normalizes OFF CSV/JSONL dump</li>
+  <li><code>providers/food_data_central.py</code> — normalizes USDA CSV/JSON</li>
+</ul>
+
+<h2>Food Search</h2>
+<p>SQLite FTS5 full-text search index on food name and brand fields.</p>
+<ul>
+  <li>Prefix matching ("chick" finds "chicken breast")</li>
+  <li>Ranked results by relevance</li>
+  <li>Trigram similarity for fuzzy/close matches (typos, alternate spellings)</li>
+  <li>Filterable by source</li>
+  <li>Deduplication: when the same food exists in both USDA and OpenFoodFacts (matched by barcode, source_code, or normalized name), search results are deduplicated. Prefer the record with more complete nutrient data; surface source as metadata so the caller knows the origin.</li>
+</ul>
+
+<h2>API Endpoints</h2>
+
+<h3>Foods</h3>
+<div class="endpoint-group">
+  <div class="endpoint"><span class="badge badge-get">GET</span> <code>/foods/search?q={query}&amp;source={source}&amp;limit={n}&amp;offset={n}</code></div>
+  <div class="endpoint"><span class="badge badge-get">GET</span> <code>/foods/barcode/{barcode}</code></div>
+  <div class="endpoint"><span class="badge badge-get">GET</span> <code>/foods/{id}</code></div>
+  <div class="endpoint"><span class="badge badge-post">POST</span> <code>/foods</code> <span class="endpoint-comment">custom food</span></div>
+  <div class="endpoint"><span class="badge badge-patch">PATCH</span> <code>/foods/{id}</code> <span class="endpoint-comment">update custom food</span></div>
+  <div class="endpoint"><span class="badge badge-delete">DELETE</span> <code>/foods/{id}</code> <span class="endpoint-comment">delete custom food</span></div>
+</div>
+
+<h3>Diary</h3>
+<div class="endpoint-group">
+  <div class="endpoint"><span class="badge badge-get">GET</span> <code>/diary/{date}</code></div>
+  <div class="endpoint"><span class="badge badge-post">POST</span> <code>/diary/{date}/entries</code></div>
+  <div class="endpoint"><span class="badge badge-patch">PATCH</span> <code>/diary/entries/{entry_id}</code></div>
+  <div class="endpoint"><span class="badge badge-delete">DELETE</span> <code>/diary/entries/{entry_id}</code></div>
+</div>
+
+<h3>Weight</h3>
+<div class="endpoint-group">
+  <div class="endpoint"><span class="badge badge-post">POST</span> <code>/weight</code></div>
+  <div class="endpoint"><span class="badge badge-get">GET</span> <code>/weight?date={date}</code></div>
+  <div class="endpoint"><span class="badge badge-get">GET</span> <code>/weight?start={date}&amp;end={date}</code></div>
+  <div class="endpoint"><span class="badge badge-patch">PATCH</span> <code>/weight/{id}</code></div>
+  <div class="endpoint"><span class="badge badge-delete">DELETE</span> <code>/weight/{id}</code></div>
+</div>
+
+<h3>Activity Imports</h3>
+<div class="endpoint-group">
+  <div class="endpoint"><span class="badge badge-post">POST</span> <code>/imports/activity/steps</code> <span class="endpoint-comment">hourly cumulative steps from Apple Shortcuts</span></div>
+  <div class="endpoint"><span class="badge badge-get">GET</span> <code>/activity/daily/{date}</code></div>
+  <div class="endpoint"><span class="badge badge-get">GET</span> <code>/activity/range?start={date}&amp;end={date}</code></div>
+</div>
+
+<p><code>POST /imports/activity/steps</code> request shape:</p>
+<pre><code>{
+  "source": "apple_shortcuts",
+  "observed_at": "2026-05-19T14:00:00-07:00",
+  "period_start": "2026-05-19T00:00:00-07:00",
+  "period_end": "2026-05-19T14:00:00-07:00",
+  "steps_total_today": 5234,
+  "timezone": "America/Los_Angeles"
+}</code></pre>
+
+<p>The API treats <code>steps_total_today</code> as a cumulative total, not an hourly delta. A later observation replaces the daily total only when it is newer and greater than or equal to the current total. If a later observation reports a lower total, the observation is preserved and the daily record is flagged for review rather than double-counted.</p>
+
+<h3>Journal</h3>
+<div class="endpoint-group">
+  <div class="endpoint"><span class="badge badge-post">POST</span> <code>/journal</code></div>
+  <div class="endpoint"><span class="badge badge-get">GET</span> <code>/journal/{date}</code></div>
+  <div class="endpoint"><span class="badge badge-get">GET</span> <code>/journal?start={date}&amp;end={date}</code></div>
+  <div class="endpoint"><span class="badge badge-patch">PATCH</span> <code>/journal/{id}</code></div>
+  <div class="endpoint"><span class="badge badge-delete">DELETE</span> <code>/journal/{id}</code></div>
+</div>
+
+<p><code>POST /journal</code> request shape:</p>
+<pre><code>{
+  "date": "2026-05-19",
+  "body": "Good food day. Anxiety spiked in the afternoon, but walking helped.",
+  "tags": ["recovery", "walk"],
+  "mood_score": 6,
+  "stress_score": 7,
+  "sleep_quality": 5
+}</code></pre>
+
+<h3>Stats</h3>
+<div class="endpoint-group">
+  <div class="endpoint"><span class="badge badge-get">GET</span> <code>/stats/daily/{date}</code></div>
+  <div class="endpoint"><span class="badge badge-get">GET</span> <code>/stats/range?start={date}&amp;end={date}</code></div>
+</div>
+
+<p><code>/stats/daily/{date}</code> response shape:</p>
+<pre><code>{
+  "date": "2026-05-19",
+  "total": { "calories_kcal": 2100, "protein_g": 150, ... },
+  "activity": {
+    "steps": 8421,
+    "source": "apple_shortcuts",
+    "last_observed_at": "2026-05-19T23:00:00-07:00",
+    "anomaly_flag": false
+  },
+  "meals": {
+    "breakfast": { "calories_kcal": 500, "protein_g": 30, ... },
+    "lunch": { "calories_kcal": 700, "protein_g": 45, ... },
+    "dinner": { "calories_kcal": 800, "protein_g": 60, ... },
+    "snack": { "calories_kcal": 100, "protein_g": 15, ... }
+  },
+  "entry_count": 8
+}</code></pre>
+<p>Each nutrient object contains all 20 NutrientsPer100 fields. Meals with no entries are included with zeroed values.</p>
+<p><code>/stats/range</code> returns an array of daily totals (same shape as above, without per-meal breakdown) for trend analysis by AI agents.</p>
+
+<h3>Recipes</h3>
+<div class="endpoint-group">
+  <div class="endpoint"><span class="badge badge-post">POST</span> <code>/recipes</code></div>
+  <div class="endpoint"><span class="badge badge-get">GET</span> <code>/recipes?limit={n}&amp;offset={n}</code></div>
+  <div class="endpoint"><span class="badge badge-get">GET</span> <code>/recipes/{recipe_id}</code></div>
+  <div class="endpoint"><span class="badge badge-patch">PATCH</span> <code>/recipes/{recipe_id}</code></div>
+  <div class="endpoint"><span class="badge badge-delete">DELETE</span> <code>/recipes/{recipe_id}</code></div>
+</div>
+
+<h2>Project Structure</h2>
+<pre class="tree"><code>nutritiontracker/
+  app/
+    main.py
+    config.py
+    models/
+      food.py
+      nutrients.py
+      diary.py
+      recipe.py
+      weight.py
+      activity.py
+      journal.py
+    providers/
+      open_food_facts.py
+      food_data_central.py
+    services/
+      food_search.py
+      diary.py
+      recipe_nutrition.py
+      activity_import.py
+    repositories/
+      foods.py
+      diary.py
+      recipes.py
+      weight.py
+      activity.py
+      journal.py
+    routes/
+      foods.py
+      diary.py
+      recipes.py
+      stats.py
+      weight.py
+      activity.py
+      imports.py
+      journal.py
+  scripts/
+    import_usda.py
+    import_off.py
+  data/
+  tests/</code></pre>
+
+<h2>Tech Stack</h2>
+<ul>
+  <li><strong>Framework:</strong> FastAPI</li>
+  <li><strong>Database:</strong> SQLite</li>
+  <li><strong>Search:</strong> SQLite FTS5 + trigram similarity</li>
+  <li><strong>Food Data:</strong> Pre-loaded USDA FoodData Central + OpenFoodFacts</li>
+</ul>
+
+<h2>MVP Build Order</h2>
+<ol class="build-order">
+  <li>Normalized food and nutrient models</li>
+  <li>Bulk import scripts (USDA + OpenFoodFacts)</li>
+  <li>FTS5 search with fuzzy matching</li>
+  <li>Diary CRUD with daily totals</li>
+  <li>Apple Shortcuts step import with daily activity normalization</li>
+  <li>Lightweight journal entries for daily recovery context</li>
+  <li>Recipe math</li>
+  <li>Custom foods</li>
+</ol>
+
+<h2>Design Decisions</h2>
+<div class="decision">
+  <strong>No caching layer.</strong> The reference architecture includes a remote search cache with TTLs. Since all food data is pre-loaded locally, there are no remote API calls to cache. SQLite queries against FTS5 indexes are fast enough without an additional cache layer.
+</div>
+<div class="decision">
+  <strong>user_id handling in MVP.</strong> User auth is deferred. In MVP, <code>user_id</code> defaults to 1 (single-user mode). Diary and recipe endpoints accept an optional <code>user_id</code> parameter to keep the schema ready for multi-user, but no auth middleware is applied.
+</div>
+<div class="decision">
+  <strong>Health check.</strong> <code>GET /health</code> returns API version and database status.
+</div>
+<div class="decision">
+  <strong>Apple Shortcuts step sync.</strong> The MVP supports hourly step ingestion from a built-in iOS Shortcuts automation. The shortcut sends cumulative day-to-date steps, not hourly deltas. The API stores every observation and normalizes the daily total server-side so repeated hourly posts are idempotent.
+</div>
+<div class="decision">
+  <strong>Journal entries stay lightweight.</strong> The journal is a daily context log, not a full therapy app. Freeform body text is the primary field; tags and 1-10 mood, stress, and sleep-quality ratings are optional.
+</div>
+
+<h2>Deferred</h2>
+<div class="deferred">
+  <ul>
+    <li>User profile / nutrition targets (BMR, TDEE, macro goals)</li>
+    <li>User authentication and multi-user support</li>
+    <li>CLI interface</li>
+    <li>Native HealthKit app integration</li>
+    <li>Apple Health XML historical import</li>
+    <li>Recovery-plan integration (meals, hydration, protein targets, caffeine/alcohol/sleep notes)</li>
+  </ul>
+</div>
+
+<h2>Product Direction</h2>
+<p>Treat nutrition tracking as a practical logging tool. The API should make logging frictionless and surface useful daily patterns. Designed to be driven by AI agents.</p>
+
+</body>
+</html>
