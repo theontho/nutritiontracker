@@ -5,7 +5,8 @@ def import_steps(*, repo: ActivityRepository, user_id: int, source: str,
                  observed_at: str, period_start: str, period_end: str,
                  steps_total_today: int, timezone: str,
                  raw_payload: dict) -> dict:
-    # Derive local_date from the date portion of observed_at
+    # observed_at is expected to be the local timestamp as sent by the client (e.g. Apple Shortcuts).
+    # The date portion of the string is therefore the correct local date.
     local_date = observed_at[:10]
 
     # Always store the observation
@@ -36,12 +37,13 @@ def import_steps(*, repo: ActivityRepository, user_id: int, source: str,
         # Newer observation
         anomaly = steps_total_today < existing["steps"]
         new_steps = existing["steps"] if anomaly else steps_total_today
+        new_last_observed_at = existing["last_observed_at"] if anomaly else observed_at
         repo.upsert_daily(
             user_id=user_id,
             date=local_date,
             source=source,
             steps=new_steps,
-            last_observed_at=observed_at,
+            last_observed_at=new_last_observed_at,
             anomaly_flag=anomaly,
         )
     # else: older observation — already stored, skip daily update

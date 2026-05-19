@@ -23,7 +23,7 @@ class ActivityRepository:
 
     def get_daily(self, *, user_id: int, date: str) -> dict | None:
         row = self.conn.execute(
-            "SELECT * FROM daily_activity WHERE user_id = ? AND date = ?",
+            "SELECT * FROM daily_activity WHERE user_id = ? AND date = ? ORDER BY last_observed_at DESC LIMIT 1",
             (user_id, date),
         ).fetchone()
         return dict(row) if row else None

@@ -10,21 +10,6 @@ class StepImportRequest(BaseModel):
     timezone: str
 
 
-class StepObservation(BaseModel):
-    id: int
-    user_id: int
-    source: str
-    observed_at: str
-    local_date: str
-    period_start: str
-    period_end: str
-    steps_total_today: int
-    timezone: str
-    created_at: str
-
-    model_config = {"from_attributes": True}
-
-
 class DailyActivity(BaseModel):
     id: int
     user_id: int

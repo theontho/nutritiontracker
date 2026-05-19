@@ -52,8 +52,10 @@ def test_import_steps_anomaly_flag(client):
                 "steps_total_today": 3000}
     r = client.post("/imports/activity/steps", json=payload2)
     assert r.status_code == 200
-    assert r.json()["steps"] == 5000  # unchanged
-    assert r.json()["anomaly_flag"] is True
+    data = r.json()
+    assert data["steps"] == 5000  # unchanged
+    assert data["anomaly_flag"] is True
+    assert data["last_observed_at"] == "2026-05-19T13:00:00-07:00"  # NOT advanced
 
 
 def test_get_daily_activity(client):
@@ -88,7 +90,12 @@ def test_get_activity_range(client):
         })
     r = client.get("/activity/range?start=2026-05-19&end=2026-05-20")
     assert r.status_code == 200
-    assert len(r.json()) == 2
+    data = r.json()
+    assert len(data) == 2
+    assert data[0]["date"] == "2026-05-19"
+    assert data[0]["steps"] == 6000
+    assert data[1]["date"] == "2026-05-20"
+    assert data[1]["steps"] == 8000
 
 
 def test_daily_stats_includes_activity(client):
