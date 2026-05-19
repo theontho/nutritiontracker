@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
+from app.auth import require_auth
 from app.config import settings
 from app.database import get_connection, init_schema
 from app.repositories.foods import FoodRepository
@@ -27,6 +28,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Nutrition Tracker",
+    dependencies=[Depends(require_auth)],
     version=settings.api_version,
     description="""Open-source REST API for nutrition tracking.
 
