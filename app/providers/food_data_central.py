@@ -26,9 +26,10 @@ NUTRIENT_MAP = {
 def normalize_usda_food(raw: dict) -> dict:
     nutrients = {}
     for fn in raw.get("foodNutrients", []):
-        nid = fn.get("nutrientId")
+        # Support both flat nutrientId (some formats) and nested nutrient.id (SR Legacy, Foundation)
+        nid = fn.get("nutrientId") or fn.get("nutrient", {}).get("id")
         if nid in NUTRIENT_MAP:
-            nutrients[NUTRIENT_MAP[nid]] = fn.get("value", 0) or 0
+            nutrients[NUTRIENT_MAP[nid]] = fn.get("amount") or fn.get("value") or 0
 
     return {
         "source": "food_data_central",
