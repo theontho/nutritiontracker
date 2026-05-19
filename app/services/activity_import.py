@@ -22,7 +22,7 @@ def import_steps(*, repo: ActivityRepository, user_id: int, source: str,
         raw_payload=raw_payload,
     )
 
-    existing = repo.get_daily(user_id=user_id, date=local_date)
+    existing = repo.get_daily(user_id=user_id, date=local_date, source=source)
 
     if existing is None:
         repo.upsert_daily(

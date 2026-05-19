@@ -21,7 +21,16 @@ class ActivityRepository:
         self.conn.commit()
         return cur.lastrowid
 
-    def get_daily(self, *, user_id: int, date: str) -> dict | None:
+    def get_daily(self, *, user_id: int, date: str, source: str | None = None) -> dict | None:
+        if source:
+            row = self.conn.execute(
+                """SELECT * FROM daily_activity
+                   WHERE user_id = ? AND date = ? AND source = ?
+                   ORDER BY last_observed_at DESC LIMIT 1""",
+                (user_id, date, source),
+            ).fetchone()
+            return dict(row) if row else None
+
         row = self.conn.execute(
             "SELECT * FROM daily_activity WHERE user_id = ? AND date = ? ORDER BY last_observed_at DESC LIMIT 1",
             (user_id, date),
