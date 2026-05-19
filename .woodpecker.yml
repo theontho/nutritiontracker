@@ -30,7 +30,7 @@ steps:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     commands:
-      - apk add --no-cache openssh-client curl git docker-cli
+      - apk add --no-cache openssh-client curl git docker-cli build-base
       - gem install kamal --no-document -q
       - mkdir -p ~/.ssh
       - echo "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
