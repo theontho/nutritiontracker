@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Import OpenFoodFacts JSONL (plain or .gz) into the production database.
+#
+# Usage:
+#   bin/import-off <path-to-off-jsonl-or-gz> [--country=en:united-states]
+#
+# The file must be on the garageband host (e.g. /home/gregmushen/nutrition-data/).
+# The script detects the current running container image automatically.
+#
+# Download the full dump (~12 GB compressed) from:
+#   https://world.openfoodfacts.org/data
+#   Direct: https://openfoodfacts-ds.s3.eu-west-3.amazonaws.com/openfoodfacts-products.jsonl.gz
+#
+# Example — US products only:
+#   bin/import-off /home/gregmushen/nutrition-data/openfoodfacts-products.jsonl.gz \
+#     --country=en:united-states
+
+set -euo pipefail
+
+if [[ $# -lt 1 ]]; then
+  echo "Usage: bin/import-off <path-to-off-jsonl-or-gz-on-host> [--country=COUNTRY_TAG]" >&2
+  exit 1
+fi
+
+HOST_FILE="$1"
+shift
+EXTRA_ARGS=("$@")
+
+HOST="192.168.1.76"
+SSH_KEY="${SSH_KEY:-$HOME/.ssh/stupidclaw_garageband_ed25519}"
+SSH="ssh -i $SSH_KEY -o StrictHostKeyChecking=no gregmushen@$HOST"
+
+IMAGE=$($SSH "docker inspect \$(docker ps --filter name=nutritiontracker-web --format '{{.Names}}' | head -1) --format '{{.Config.Image}}'")
+
+echo "Using image: $IMAGE"
+echo "Importing: $HOST_FILE"
+[[ ${#EXTRA_ARGS[@]} -gt 0 ]] && echo "Options: ${EXTRA_ARGS[*]}"
+
+$SSH "docker run --rm \
+  -v \$(dirname '$HOST_FILE'):/nutrition-data \
+  -v nutritiontracker_data:/data \
+  --entrypoint python \
+  '$IMAGE' \
+  -m scripts.import_off \
+  /nutrition-data/\$(basename '$HOST_FILE') \
+  /data/nutrition.db \
+  $(printf '%s ' "${EXTRA_ARGS[@]}")"
