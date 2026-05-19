@@ -1,5 +1,5 @@
 import pytest
-from app.models.food import NutrientsPer100, Food, FoodCreate
+from app.models.food import NutrientsPer100, FoodCreate
 from app.models.diary import DiaryEntryCreate
 from app.models.recipe import RecipeCreate, RecipeIngredientInput
 from app.models.weight import WeightEntryCreate

@@ -1,5 +1,5 @@
 import pytest
-from app.services.unit_conversion import convert_to_grams, ConversionResult
+from app.services.unit_conversion import convert_to_grams
 
 
 def test_grams_identity():

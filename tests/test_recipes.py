@@ -1,4 +1,3 @@
-import pytest
 from app.services.recipe_nutrition import compute_recipe_nutrients
 
 

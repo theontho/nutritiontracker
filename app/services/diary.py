@@ -1,6 +1,4 @@
-import json
 from app.models.food import NutrientsPer100
-from app.services.unit_conversion import convert_to_grams
 
 
 def compute_entry_nutrients(food: dict, grams: float) -> dict:
