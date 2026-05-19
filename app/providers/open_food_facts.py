@@ -1,3 +1,8 @@
+import httpx
+
+OFF_API_URL = "https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
+OFF_TIMEOUT = 5.0  # seconds
+
 NUTRIMENT_MAP = {
     "energy-kcal_100g": "calories_kcal",
     "proteins_100g": "protein_g",
@@ -57,3 +62,36 @@ def normalize_off_food(raw: dict) -> dict:
         "serving_size_text": raw.get("serving_size") or None,
         **nutrients,
     }
+
+
+def fetch_off_by_barcode(barcode: str) -> dict | None:
+    """Fetch a single product from the live OFF API by barcode.
+
+    Returns a normalized food dict if the product exists and has nutrient data,
+    otherwise returns None.
+    """
+    try:
+        resp = httpx.get(
+            OFF_API_URL.format(barcode=barcode),
+            timeout=OFF_TIMEOUT,
+            headers={"User-Agent": "NutritionTracker/1.0"},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        return None
+
+    if data.get("status") != 1:
+        return None
+
+    product = data.get("product", {})
+    name = product.get("product_name", "").strip()
+    if not name:
+        return None
+
+    normalized = normalize_off_food(product)
+    # Only return if we actually got nutrient data
+    if normalized.get("calories_kcal", 0) == 0 and normalized.get("protein_g", 0) == 0:
+        return None
+
+    return normalized
