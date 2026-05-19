@@ -28,7 +28,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Nutrition Tracker",
-    dependencies=[Depends(require_auth)],
     version=settings.api_version,
     description="""Open-source REST API for nutrition tracking.
 
@@ -49,16 +48,17 @@ Designed to be called by AI agents to log and query nutrition data.
     lifespan=lifespan,
 )
 
-app.include_router(foods_router)
-app.include_router(diary_router)
-app.include_router(stats_router)
-app.include_router(journal_router)
-app.include_router(weight_router)
-app.include_router(recipes_router)
-app.include_router(activity_router)
-app.include_router(imports_router)
+_auth = [Depends(require_auth)]
+app.include_router(foods_router, dependencies=_auth)
+app.include_router(diary_router, dependencies=_auth)
+app.include_router(stats_router, dependencies=_auth)
+app.include_router(journal_router, dependencies=_auth)
+app.include_router(weight_router, dependencies=_auth)
+app.include_router(recipes_router, dependencies=_auth)
+app.include_router(activity_router, dependencies=_auth)
+app.include_router(imports_router, dependencies=_auth)
 
 
-@app.get("/health", dependencies=[])
+@app.get("/health")
 def health():
     return {"status": "ok", "version": settings.api_version}
