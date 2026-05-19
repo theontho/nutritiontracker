@@ -38,6 +38,7 @@ steps:
       - printf "Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n" > ~/.ssh/config
       - printf "NT_BEARER_TOKEN=%s\nCLOUDFLARE_TUNNEL_TOKEN=%s\nKAMAL_REGISTRY_PASSWORD=%s\n" "$NT_BEARER_TOKEN" "$CLOUDFLARE_TUNNEL_TOKEN" "$KAMAL_REGISTRY_PASSWORD" > .kamal/secrets
       - kamal deploy
+      - kamal accessory boot cloudflared 2>/dev/null || kamal accessory reboot cloudflared
     environment:
       DEPLOY_SSH_KEY:
         from_secret: deploy_ssh_key
