@@ -25,6 +25,7 @@ class DiaryEntry(BaseModel):
     meal_type: MealType
     food_id: int
     food_snapshot: dict
+    food_name: str
     amount: float
     unit: str
     grams: float

@@ -17,6 +17,14 @@ def _food_repo(request: Request) -> FoodRepository:
     return FoodRepository(request.app.state.db)
 
 
+@router.get("/diary/search", response_model=list[DiaryEntry], summary="Search diary entries by food name")
+def search_entries(request: Request, q: str):
+    """Search all diary entries where the food name contains the query string (case-insensitive). Returns results newest first."""
+    return _diary_repo(request).search_by_food_name(
+        user_id=settings.default_user_id, query=q
+    )
+
+
 @router.get("/diary/{date}", response_model=list[DiaryEntry], summary="List diary entries for a date")
 def list_entries(request: Request, date: str):
     """Get all diary entries for the given date (YYYY-MM-DD format)."""
@@ -46,8 +54,8 @@ def create_entry(request: Request, date: str, body: DiaryEntryCreate):
     entry_id = diary_repo.create(
         user_id=settings.default_user_id, date=date,
         meal_type=body.meal_type, food_id=body.food_id,
-        food_snapshot=snapshot, amount=body.amount,
-        unit=body.unit, grams=conversion.grams,
+        food_snapshot=snapshot, food_name=snapshot.get("name", ""),
+        amount=body.amount, unit=body.unit, grams=conversion.grams,
         nutrients_total=nutrients,
     )
     return diary_repo.get(entry_id)
