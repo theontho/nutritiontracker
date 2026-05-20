@@ -60,6 +60,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
             meal_type TEXT NOT NULL CHECK(meal_type IN ('breakfast','lunch','dinner','snack')),
             food_id INTEGER NOT NULL REFERENCES foods(id),
             food_snapshot TEXT NOT NULL,
+            food_name TEXT NOT NULL DEFAULT '',
             amount REAL NOT NULL,
             unit TEXT NOT NULL,
             grams REAL NOT NULL,
@@ -96,6 +97,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_foods_source_code ON foods(source, source_code);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_foods_source_code_unique ON foods(source, source_code) WHERE source_code IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_diary_user_date ON diary_entries(user_id, date);
+        CREATE INDEX IF NOT EXISTS idx_diary_food_name ON diary_entries(user_id, food_name);
         CREATE INDEX IF NOT EXISTS idx_weight_user_date ON weight_entries(user_id, date);
 
         CREATE TABLE IF NOT EXISTS journal_entries (
