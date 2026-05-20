@@ -106,6 +106,7 @@ def test_search_by_food_name_is_case_insensitive(diary_repo, banana_id):
     )
     results = diary_repo.search_by_food_name(user_id=1, query="banana")
     assert len(results) == 1
+    assert results[0]["food_name"] == "Banana"
 
 
 def test_search_by_food_name_returns_empty_for_no_match(diary_repo, banana_id):
@@ -142,3 +143,19 @@ def test_search_by_food_name_ordered_newest_first(diary_repo, banana_id):
     results = diary_repo.search_by_food_name(user_id=1, query="Banana")
     assert results[0]["date"] == "2026-05-10"
     assert results[1]["date"] == "2026-05-01"
+
+
+def test_search_by_food_name_does_not_return_other_users_entries(diary_repo, banana_id):
+    diary_repo.create(
+        user_id=1, date="2026-05-01", meal_type="breakfast",
+        food_id=banana_id, food_snapshot={"name": "Banana"},
+        food_name="Banana", amount=1, unit="g", grams=100, nutrients_total={},
+    )
+    diary_repo.create(
+        user_id=2, date="2026-05-01", meal_type="breakfast",
+        food_id=banana_id, food_snapshot={"name": "Banana"},
+        food_name="Banana", amount=1, unit="g", grams=100, nutrients_total={},
+    )
+    results = diary_repo.search_by_food_name(user_id=1, query="Banana")
+    assert len(results) == 1
+    assert results[0]["user_id"] == 1

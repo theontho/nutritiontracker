@@ -7,7 +7,7 @@ class DiaryRepository:
         self.conn = conn
 
     def create(self, *, user_id: int, date: str, meal_type: str,
-               food_id: int, food_snapshot: dict, food_name: str = "",
+               food_id: int, food_snapshot: dict, food_name: str = "",  # populated from food_snapshot["name"] by the route layer; defaults to "" for backward compat
                amount: float, unit: str, grams: float, nutrients_total: dict) -> int:
         cur = self.conn.execute(
             """INSERT INTO diary_entries
@@ -45,7 +45,11 @@ class DiaryRepository:
         return results
 
     def search_by_food_name(self, *, user_id: int, query: str) -> list[dict]:
-        """Return all diary entries whose food_name contains the query string (case-insensitive), newest first."""
+        """Return all diary entries whose food_name contains the query string (case-insensitive), newest first.
+
+        Note: uses a leading-wildcard LIKE ('%term%') which bypasses the idx_diary_food_name index.
+        This is a full table scan on diary_entries — acceptable for single-user personal-scale data.
+        """
         rows = self.conn.execute(
             """SELECT * FROM diary_entries
                WHERE user_id = ? AND LOWER(food_name) LIKE '%' || LOWER(?) || '%'
