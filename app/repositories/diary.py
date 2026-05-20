@@ -7,14 +7,14 @@ class DiaryRepository:
         self.conn = conn
 
     def create(self, *, user_id: int, date: str, meal_type: str,
-               food_id: int, food_snapshot: dict, amount: float,
-               unit: str, grams: float, nutrients_total: dict) -> int:
+               food_id: int, food_snapshot: dict, food_name: str = "",
+               amount: float, unit: str, grams: float, nutrients_total: dict) -> int:
         cur = self.conn.execute(
             """INSERT INTO diary_entries
-               (user_id, date, meal_type, food_id, food_snapshot, amount, unit, grams, nutrients_total)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (user_id, date, meal_type, food_id, food_snapshot, food_name, amount, unit, grams, nutrients_total)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (user_id, date, meal_type, food_id,
-             json.dumps(food_snapshot), amount, unit, grams,
+             json.dumps(food_snapshot), food_name, amount, unit, grams,
              json.dumps(nutrients_total)),
         )
         self.conn.commit()
@@ -35,6 +35,22 @@ class DiaryRepository:
         rows = self.conn.execute(
             "SELECT * FROM diary_entries WHERE user_id = ? AND date = ? ORDER BY created_at",
             (user_id, date),
+        ).fetchall()
+        results = []
+        for row in rows:
+            d = dict(row)
+            d["food_snapshot"] = json.loads(d["food_snapshot"])
+            d["nutrients_total"] = json.loads(d["nutrients_total"])
+            results.append(d)
+        return results
+
+    def search_by_food_name(self, *, user_id: int, query: str) -> list[dict]:
+        """Return all diary entries whose food_name contains the query string (case-insensitive), newest first."""
+        rows = self.conn.execute(
+            """SELECT * FROM diary_entries
+               WHERE user_id = ? AND LOWER(food_name) LIKE '%' || LOWER(?) || '%'
+               ORDER BY date DESC, created_at DESC""",
+            (user_id, query),
         ).fetchall()
         results = []
         for row in rows:
