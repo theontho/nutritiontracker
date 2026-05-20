@@ -19,5 +19,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DROP INDEX IF EXISTS idx_diary_food_name")
-    # SQLite does not support DROP COLUMN before 3.35 — leave column in place on downgrade
+    raise NotImplementedError("downgrade not supported for this migration")
