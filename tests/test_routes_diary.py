@@ -71,6 +71,7 @@ def test_search_diary_is_case_insensitive(client, db):
     r = client.get("/diary/search?q=banana")
     assert r.status_code == 200
     assert len(r.json()) == 1
+    assert r.json()[0]["food_name"] == "Banana"
 
 
 def test_search_diary_returns_empty_for_no_match(client, db):
@@ -90,3 +91,17 @@ def test_create_entry_response_includes_food_name(client, db):
     })
     assert r.status_code == 201
     assert r.json()["food_name"] == "Banana"
+
+
+def test_search_diary_empty_q_returns_all_entries(client, db):
+    """An empty q string matches everything — intentional behavior for personal-scale use."""
+    fid = _seed(db)
+    client.post("/diary/2026-05-01/entries", json={
+        "food_id": fid, "amount": 100, "unit": "g", "meal_type": "breakfast"
+    })
+    client.post("/diary/2026-05-02/entries", json={
+        "food_id": fid, "amount": 50, "unit": "g", "meal_type": "lunch"
+    })
+    r = client.get("/diary/search?q=")
+    assert r.status_code == 200
+    assert len(r.json()) == 2
