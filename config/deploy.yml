@@ -6,7 +6,10 @@ servers:
     - 192.168.60.55
 
 registry:
-  server: localhost:5555
+  server: 192.168.60.55:5000
+  username: kamal
+  password:
+    - KAMAL_REGISTRY_PASSWORD
 
 env:
   clear:
@@ -27,7 +30,7 @@ proxy:
 
 builder:
   arch: amd64
-  remote: ssh://gregmushen@192.168.60.55
+  driver: docker
 
 ssh:
   user: gregmushen
