@@ -225,3 +225,36 @@ curl -s -o /dev/null -w "%{http_code}" \
 ```
 
 **Expected:** `200`
+
+---
+
+## 12. Kitchen Memory — inventory, matches, shopping list
+
+Create inventory:
+
+```bash
+curl -s -X POST https://n.paracosmlab.com/kitchen/inventory \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Eggs","status":"have","location":"fridge"}'
+```
+
+Create a favorite meal:
+
+```bash
+curl -s -X POST https://n.paracosmlab.com/kitchen/meals \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Spinach Eggs","tags":["breakfast","high_protein"],"effort":"low","ingredients":[{"name":"Eggs","role":"required"},{"name":"Spinach","role":"optional"}]}'
+```
+
+Rank meals:
+
+```bash
+curl -s -X POST https://n.paracosmlab.com/kitchen/matches \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"effort":"low"}'
+```
+
+**Expected:** Returns a ranked list with `meal_name`, `score`, ingredient groups, and score breakdown.

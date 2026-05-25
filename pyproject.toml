@@ -13,6 +13,7 @@ dependencies = [
     "alembic>=1.13",
     "sqlalchemy>=2.0",
     "httpx>=0.27",
+    "click>=8.0",
 ]
 
 [project.optional-dependencies]
@@ -22,6 +23,9 @@ dev = [
     "httpx>=0.27",
     "ruff>=0.4",
 ]
+
+[project.scripts]
+nutrition-pp-cli = "app.cli.main:cli"
 
 [build-system]
 requires = ["hatchling"]

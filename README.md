@@ -16,6 +16,9 @@ Key endpoints:
 - `POST /weight` — log body weight
 - `POST /recipes` — build recipes with auto-computed nutrition math
 - `POST /imports/activity/steps` — import step count data
+- `POST /kitchen/inventory` — remember what you have, use soon, maybe have, are out of, or treat as a staple
+- `POST /kitchen/matches` — rank favorite meals from current kitchen inventory
+- `POST /kitchen/shopping-list/generate` — generate grocery items from selected favorite meals
 
 All endpoints (except `/health`) require `Authorization: Bearer <token>`.
 
