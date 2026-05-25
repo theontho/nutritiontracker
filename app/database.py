@@ -82,6 +82,69 @@ def init_schema(conn: sqlite3.Connection) -> None:
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
 
+        CREATE TABLE IF NOT EXISTS kitchen_inventory_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL DEFAULT 1,
+            canonical_name TEXT NOT NULL,
+            display_name TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('have','use_soon','maybe','out','staple')),
+            location TEXT CHECK(location IN ('fridge','freezer','pantry','other')),
+            category TEXT,
+            notes TEXT,
+            last_confirmed_at TEXT NOT NULL DEFAULT (datetime('now')),
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(user_id, canonical_name)
+        );
+
+        CREATE TABLE IF NOT EXISTS favorite_meals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL DEFAULT 1,
+            name TEXT NOT NULL,
+            tags TEXT NOT NULL DEFAULT '[]',
+            prep_time_minutes INTEGER,
+            effort TEXT CHECK(effort IN ('low','medium','high')),
+            favorite_score INTEGER NOT NULL DEFAULT 0,
+            nutrition_template_id INTEGER,
+            last_made_at TEXT,
+            times_made INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS favorite_meal_ingredients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            meal_id INTEGER NOT NULL REFERENCES favorite_meals(id) ON DELETE CASCADE,
+            canonical_name TEXT NOT NULL,
+            display_name TEXT NOT NULL,
+            role TEXT NOT NULL CHECK(role IN ('required','optional','substitution')),
+            category TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS shopping_list_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL DEFAULT 1,
+            canonical_name TEXT NOT NULL,
+            display_name TEXT NOT NULL,
+            checked INTEGER NOT NULL DEFAULT 0,
+            source TEXT NOT NULL CHECK(source IN ('manual','meal_plan','inventory','staple_refresh','suggestion')),
+            linked_meal_ids TEXT NOT NULL DEFAULT '[]',
+            notes TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(user_id, canonical_name)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_kitchen_inventory_user_status
+            ON kitchen_inventory_items(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_favorite_meals_user
+            ON favorite_meals(user_id);
+        CREATE INDEX IF NOT EXISTS idx_favorite_meal_ingredients_meal
+            ON favorite_meal_ingredients(meal_id);
+        CREATE INDEX IF NOT EXISTS idx_shopping_list_user_checked
+            ON shopping_list_items(user_id, checked);
+
         CREATE TABLE IF NOT EXISTS weight_entries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL DEFAULT 1,

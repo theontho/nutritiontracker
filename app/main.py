@@ -13,6 +13,7 @@ from app.routes.imports import router as imports_router
 from app.routes.recipes import router as recipes_router
 from app.routes.stats import router as stats_router
 from app.routes.journal import router as journal_router
+from app.routes.kitchen import router as kitchen_router
 from app.routes.weight import router as weight_router
 
 
@@ -55,6 +56,7 @@ app.include_router(stats_router, dependencies=_auth)
 app.include_router(journal_router, dependencies=_auth)
 app.include_router(weight_router, dependencies=_auth)
 app.include_router(recipes_router, dependencies=_auth)
+app.include_router(kitchen_router, dependencies=_auth)
 app.include_router(activity_router, dependencies=_auth)
 app.include_router(imports_router, dependencies=_auth)
 
