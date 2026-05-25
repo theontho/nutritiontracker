@@ -6,10 +6,7 @@ servers:
     - 192.168.60.55
 
 registry:
-  server: 192.168.60.55:5000
-  username: kamal
-  password:
-    - KAMAL_REGISTRY_PASSWORD
+  server: localhost:5555
 
 env:
   clear:
