@@ -26,7 +26,7 @@ HOST_FILE="$1"
 shift
 EXTRA_ARGS=("$@")
 
-HOST="192.168.1.76"
+HOST="192.168.60.55"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/stupidclaw_garageband_ed25519}"
 SSH="ssh -i $SSH_KEY -o StrictHostKeyChecking=no gregmushen@$HOST"
 

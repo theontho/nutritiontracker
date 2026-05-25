@@ -3,10 +3,10 @@ image: nutritiontracker
 
 servers:
   web:
-    - 192.168.1.76
+    - 192.168.60.55
 
 registry:
-  server: 192.168.1.76:5000
+  server: 192.168.60.55:5000
   username: kamal
   password:
     - KAMAL_REGISTRY_PASSWORD
@@ -30,7 +30,7 @@ proxy:
 
 builder:
   arch: amd64
-  remote: ssh://gregmushen@192.168.1.76
+  remote: ssh://gregmushen@192.168.60.55
 
 ssh:
   user: gregmushen
@@ -40,7 +40,7 @@ ssh:
 accessories:
   cloudflared:
     image: cloudflare/cloudflared:latest
-    host: 192.168.1.76
+    host: 192.168.60.55
     cmd: tunnel --no-autoupdate run
     env:
       secret:

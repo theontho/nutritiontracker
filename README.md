@@ -53,7 +53,7 @@ bin/import-usda /home/gregmushen/nutrition-data/foundationDownload.json
 Download the full compressed JSONL (~12 GB) once:
 
 ```bash
-ssh gregmushen@192.168.1.76 \
+ssh gregmushen@192.168.60.55 \
   "wget -q -O /home/gregmushen/nutrition-data/openfoodfacts-products.jsonl.gz \
    'https://openfoodfacts-ds.s3.eu-west-3.amazonaws.com/openfoodfacts-products.jsonl.gz'"
 ```
