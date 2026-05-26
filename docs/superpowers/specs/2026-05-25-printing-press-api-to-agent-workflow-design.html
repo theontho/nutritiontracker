@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Printing Press API-to-Agent Workflow</title>
+  <style>
+    :root {
+      --bg: #0f1411;
+      --surface: #171d19;
+      --surface-2: #202821;
+      --border: #334138;
+      --text: #eef3ee;
+      --muted: #a8b6aa;
+      --accent: #7acb8f;
+      --accent-2: #f2c66d;
+      --danger: #ff8f7a;
+      --code: #0b0f0c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem;
+    }
+    h1 {
+      margin: 0 0 0.5rem;
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin-top: 2.5rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--accent);
+      font-size: 1.45rem;
+    }
+    h3 {
+      margin-top: 1.6rem;
+      color: var(--accent-2);
+      font-size: 1.1rem;
+    }
+    p, li { color: var(--text); }
+    a { color: var(--accent); }
+    .lede {
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 1.08rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 1rem;
+    }
+    .card h3 { margin-top: 0; }
+    .principle {
+      border-left: 4px solid var(--accent);
+      background: var(--surface-2);
+      padding: 1rem 1.2rem;
+      margin: 1.5rem 0;
+      font-size: 1.05rem;
+    }
+    code {
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 0.08rem 0.32rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.9em;
+    }
+    pre {
+      overflow-x: auto;
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    pre code {
+      border: 0;
+      padding: 0;
+      background: transparent;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.95rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.65rem;
+      vertical-align: top;
+    }
+    th {
+      background: var(--surface-2);
+      color: var(--accent);
+      text-align: left;
+    }
+    ul, ol { padding-left: 1.35rem; }
+    .pill {
+      display: inline-block;
+      margin: 0.15rem 0.2rem 0.15rem 0;
+      padding: 0.2rem 0.55rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--surface-2);
+      font-size: 0.85rem;
+    }
+    .warning { color: var(--danger); }
+    footer {
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      margin-top: 3rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Printing Press API-to-Agent Workflow</h1>
+      <p class="lede">A reusable playbook for turning an OpenAPI API into a workflow-shaped CLI, installed binary, Hermes skill, and verified natural-language operating surface.</p>
+      <p>
+        <a href="./2026-05-25-printing-press-api-to-agent-workflow-design.md">Markdown source</a>
+        · <a href="../../hermes/skills/printing-press-api-to-agent-workflow/SKILL.md">Hermes skill draft</a>
+        · <a href="../../index.html">Docs index</a>
+      </p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="principle">
+      <strong>Core instruction:</strong> Do not merely wrap endpoints. Design an agent-native operational interface. Commands should map to real user workflows, return JSON by default, be safe for automation, and have a companion skill that teaches Hermes when and how to use the CLI.
+    </section>
+
+    <section class="grid" aria-label="Workflow layers">
+      <article class="card">
+        <h3>1. OpenAPI to CLI</h3>
+        <p>Fetch and inspect <code>/openapi.json</code>, group endpoints into human domains, and build a small Printing Press-style CLI.</p>
+      </article>
+      <article class="card">
+        <h3>2. CLI to Skill</h3>
+        <p>Create a Hermes skill with triggers, exact commands, prerequisites, safety rules, known quirks, and workflow mappings.</p>
+      </article>
+      <article class="card">
+        <h3>3. Verify Live</h3>
+        <p>Run help, health, one read-only endpoint, and one representative workflow before calling the bridge ready.</p>
+      </article>
+    </section>
+
+    <h2>Inputs</h2>
+    <ul>
+      <li>OpenAPI URL</li>
+      <li>Optional API token</li>
+      <li>Desired CLI name</li>
+      <li>Desired workflow commands</li>
+      <li>Request to make the API agent-friendly</li>
+    </ul>
+
+    <h2>CLI Authoring Rules</h2>
+    <h3>Inspect the contract</h3>
+    <pre><code>curl -fsSL "$OPENAPI_URL" -o /tmp/openapi.json
+jq '.info, (.paths | keys)' /tmp/openapi.json</code></pre>
+
+    <h3>Group routes into domains</h3>
+    <table>
+      <thead>
+        <tr><th>Raw Surface</th><th>Agent-Native Domain</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>/kitchen/inventory</code>, <code>/kitchen/matches</code></td><td><code>kitchen</code></td></tr>
+        <tr><td><code>/diary/{date}/entries</code>, <code>/stats/daily/{date}</code></td><td><code>diary</code> and <code>stats</code></td></tr>
+        <tr><td><code>/reservations</code>, <code>/guests</code>, <code>/properties</code></td><td><code>bookings</code>, <code>guests</code>, or <code>stays</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Standard root flags</h3>
+    <p>
+      <span class="pill">--json</span>
+      <span class="pill">--compact</span>
+      <span class="pill">--quiet</span>
+      <span class="pill">--agent</span>
+      <span class="pill">--base-url</span>
+      <span class="pill">--token</span>
+      <span class="pill">--config</span>
+      <span class="pill">--timeout</span>
+    </p>
+
+    <h3>Secrets and config</h3>
+    <pre><code>~/.config/&lt;cli&gt;/config.json
+chmod 0600 ~/.config/&lt;cli&gt;/config.json</code></pre>
+    <p>Support <code>&lt;CLI&gt;_BASE_URL</code>, <code>&lt;CLI&gt;_TOKEN</code>, <code>&lt;CLI&gt;_CONFIG</code>, and <code>&lt;CLI&gt;_TIMEOUT</code>. Never print bearer tokens in normal output.</p>
+
+    <h3>Implementation order</h3>
+    <ol>
+      <li><code>health</code> or <code>doctor</code></li>
+      <li>Read-only list, get, and search commands</li>
+      <li>Safe creates</li>
+      <li>Updates</li>
+      <li><span class="warning">Destructive writes only when explicitly requested</span></li>
+    </ol>
+
+    <h2>Hermes Skill Authoring Rules</h2>
+    <p>The companion skill tells Hermes when to use the CLI, how natural language maps to commands, and which operations need care.</p>
+    <pre><code>---
+name: &lt;skill-name&gt;
+description: Use &lt;cli&gt; to work with &lt;service/domain&gt; when users ask to &lt;primary jobs&gt;.
+version: 0.1.0
+author: Printing Press
+license: MIT
+tags:
+  - printing-press
+  - openapi
+  - cli
+related:
+  - printing-press-api-to-agent-workflow
+---</code></pre>
+
+    <h3>Prerequisite commands</h3>
+    <pre><code>command -v &lt;cli&gt;
+&lt;cli&gt; --help
+&lt;cli&gt; health --json
+&lt;cli&gt; config show --json</code></pre>
+
+    <h3>Natural-language mappings</h3>
+    <table>
+      <thead>
+        <tr><th>User Says</th><th>Command</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>what can I make?</td><td><code>nt kitchen matches --agent --json</code></td></tr>
+        <tr><td>I have eggs</td><td><code>nt kitchen have eggs --agent --json</code></td></tr>
+        <tr><td>log this meal</td><td><code>nt diary add --date today --meal &lt;meal&gt; --food "&lt;food&gt;" --amount &lt;n&gt; --unit "&lt;unit&gt;" --agent --json</code></td></tr>
+        <tr><td>who's checking in?</td><td><code>hostfully today --agent --json</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Known quirks to capture</h3>
+    <ul>
+      <li>Masked phone numbers may be incomplete.</li>
+      <li>Apple Health steps can be stale if the local cache has not synced.</li>
+      <li>Open Food Facts imports may contain zero-nutrient rows.</li>
+      <li>Local cache sync may be needed before reads reflect latest remote state.</li>
+    </ul>
+
+    <h2>Verification Checklist</h2>
+    <pre><code>command -v &lt;cli&gt;
+&lt;cli&gt; --help
+&lt;cli&gt; health --json
+&lt;cli&gt; &lt;read-command&gt; --json
+&lt;cli&gt; &lt;representative-workflow&gt; --json</code></pre>
+
+    <p>The bridge is done only when a natural-language request can be translated into a successful CLI command without guessing.</p>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>Related aliases: <code>printing-press-openapi-cli-authoring</code>, <code>printing-press-companion-skill-authoring</code>.</p>
+    </div>
+  </footer>
+</body>
+</html>

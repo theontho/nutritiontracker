@@ -28,6 +28,12 @@ All endpoints (except `/health`) require `Authorization: Bearer <token>`.
 - Deployed via Kamal 2 to a local server, exposed through a Cloudflare tunnel
 - CI: Woodpecker (lint → secret-scan → test → deploy)
 
+## Docs
+
+- [Docs index](docs/index.html)
+- [Printing Press API-to-Agent Workflow](docs/superpowers/specs/2026-05-25-printing-press-api-to-agent-workflow-design.md)
+- [Companion Hermes skill draft](docs/hermes/skills/printing-press-api-to-agent-workflow/SKILL.md)
+
 ## Local development
 
 ```bash
