@@ -1,4 +1,5 @@
 import pytest
+
 from app.repositories.foods import FoodRepository
 
 
@@ -11,8 +12,12 @@ def repo(db):
 
 def test_create_and_get(repo):
     food_id = repo.create(
-        source="custom", name="Banana", calories_kcal=89, protein_g=1.1,
-        carbs_g=22.8, fat_g=0.3,
+        source="custom",
+        name="Banana",
+        calories_kcal=89,
+        protein_g=1.1,
+        carbs_g=22.8,
+        fat_g=0.3,
     )
     food = repo.get(food_id)
     assert food["name"] == "Banana"
@@ -74,3 +79,39 @@ def test_delete_food(repo):
     food_id = repo.create(source="custom", name="To Delete")
     repo.delete(food_id)
     assert repo.get(food_id) is None
+
+
+def test_bulk_upsert_preserves_referenced_food_id(repo, db):
+    food_id = repo.create(
+        source="food_data_central",
+        source_code="123",
+        name="Original Name",
+    )
+    db.execute(
+        """INSERT INTO diary_entries
+           (date, meal_type, food_id, food_snapshot, food_name, amount, unit,
+            grams, nutrients_total)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            "2026-07-26",
+            "snack",
+            food_id,
+            "{}",
+            "Original Name",
+            1,
+            "serving",
+            100,
+            "{}",
+        ),
+    )
+    db.commit()
+
+    upserted_id = repo.create_no_commit(
+        source="food_data_central",
+        source_code="123",
+        name="Updated Name",
+    )
+    db.commit()
+
+    assert upserted_id == food_id
+    assert repo.get(food_id)["name"] == "Updated Name"

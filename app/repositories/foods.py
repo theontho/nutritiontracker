@@ -32,15 +32,37 @@ class FoodRepository:
 
     def create(self, *, source: str, name: str, **kwargs) -> int:
         nutrient_fields = [
-            "calories_kcal", "protein_g", "carbs_g", "fat_g", "sugar_g",
-            "saturated_fat_g", "fiber_g", "sodium_mg", "potassium_mg",
-            "calcium_mg", "iron_mg", "magnesium_mg", "zinc_mg", "phosphorus_mg",
-            "vitamin_a_ug", "vitamin_c_mg", "vitamin_d_ug", "vitamin_b6_mg",
-            "vitamin_b12_ug", "niacin_mg",
+            "calories_kcal",
+            "protein_g",
+            "carbs_g",
+            "fat_g",
+            "sugar_g",
+            "saturated_fat_g",
+            "fiber_g",
+            "sodium_mg",
+            "potassium_mg",
+            "calcium_mg",
+            "iron_mg",
+            "magnesium_mg",
+            "zinc_mg",
+            "phosphorus_mg",
+            "vitamin_a_ug",
+            "vitamin_c_mg",
+            "vitamin_d_ug",
+            "vitamin_b6_mg",
+            "vitamin_b12_ug",
+            "niacin_mg",
         ]
         other_fields = [
-            "source_code", "brand", "barcode", "image_url", "serving_quantity",
-            "serving_unit", "serving_size_text", "base_quantity", "base_unit",
+            "source_code",
+            "brand",
+            "barcode",
+            "image_url",
+            "serving_quantity",
+            "serving_unit",
+            "serving_size_text",
+            "base_quantity",
+            "base_unit",
             "density_g_per_ml",
         ]
         all_fields = other_fields + nutrient_fields
@@ -63,15 +85,37 @@ class FoodRepository:
         source = kwargs.pop("source")
         name = kwargs.pop("name")
         nutrient_fields = [
-            "calories_kcal", "protein_g", "carbs_g", "fat_g", "sugar_g",
-            "saturated_fat_g", "fiber_g", "sodium_mg", "potassium_mg",
-            "calcium_mg", "iron_mg", "magnesium_mg", "zinc_mg", "phosphorus_mg",
-            "vitamin_a_ug", "vitamin_c_mg", "vitamin_d_ug", "vitamin_b6_mg",
-            "vitamin_b12_ug", "niacin_mg",
+            "calories_kcal",
+            "protein_g",
+            "carbs_g",
+            "fat_g",
+            "sugar_g",
+            "saturated_fat_g",
+            "fiber_g",
+            "sodium_mg",
+            "potassium_mg",
+            "calcium_mg",
+            "iron_mg",
+            "magnesium_mg",
+            "zinc_mg",
+            "phosphorus_mg",
+            "vitamin_a_ug",
+            "vitamin_c_mg",
+            "vitamin_d_ug",
+            "vitamin_b6_mg",
+            "vitamin_b12_ug",
+            "niacin_mg",
         ]
         other_fields = [
-            "source_code", "brand", "barcode", "image_url", "serving_quantity",
-            "serving_unit", "serving_size_text", "base_quantity", "base_unit",
+            "source_code",
+            "brand",
+            "barcode",
+            "image_url",
+            "serving_quantity",
+            "serving_unit",
+            "serving_size_text",
+            "base_quantity",
+            "base_unit",
             "density_g_per_ml",
         ]
         all_fields = other_fields + nutrient_fields
@@ -83,13 +127,28 @@ class FoodRepository:
                 values.append(kwargs[f])
         placeholders = ", ".join(["?"] * len(values))
         cols = ", ".join(fields)
+        conflict_clause = ""
+        if "source_code" in fields:
+            updates = ", ".join(
+                f"{field} = excluded.{field}"
+                for field in fields
+                if field not in ("source", "source_code")
+            )
+            conflict_clause = (
+                " ON CONFLICT(source, source_code) WHERE source_code IS NOT NULL"
+                f" DO UPDATE SET {updates}, updated_at = datetime('now')"
+            )
         cur = self.conn.execute(
-            f"INSERT OR REPLACE INTO foods ({cols}) VALUES ({placeholders})", values
+            f"INSERT INTO foods ({cols}) VALUES ({placeholders})"
+            f"{conflict_clause} RETURNING id",
+            values,
         )
-        return cur.lastrowid
+        return cur.fetchone()[0]
 
     def get(self, food_id: int) -> dict | None:
-        row = self.conn.execute("SELECT * FROM foods WHERE id = ?", (food_id,)).fetchone()
+        row = self.conn.execute(
+            "SELECT * FROM foods WHERE id = ?", (food_id,)
+        ).fetchone()
         return dict(row) if row else None
 
     def get_by_barcode(self, barcode: str) -> dict | None:

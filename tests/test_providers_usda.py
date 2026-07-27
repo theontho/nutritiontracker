@@ -8,10 +8,10 @@ def test_normalize_usda_food():
         "brandName": None,
         "gtinUpc": "",
         "foodNutrients": [
-            {"nutrientId": 1008, "value": 89},   # Energy
-            {"nutrientId": 1003, "value": 1.1},   # Protein
+            {"nutrientId": 1008, "value": 89},  # Energy
+            {"nutrientId": 1003, "value": 1.1},  # Protein
             {"nutrientId": 1005, "value": 22.8},  # Carbs
-            {"nutrientId": 1004, "value": 0.3},   # Fat
+            {"nutrientId": 1004, "value": 0.3},  # Fat
         ],
     }
     food = normalize_usda_food(raw)
@@ -31,3 +31,19 @@ def test_normalize_handles_missing_nutrients():
     food = normalize_usda_food(raw)
     assert food["calories_kcal"] == 0
     assert food["protein_g"] == 0
+
+
+def test_normalize_supports_foundation_energy_ids_with_precedence():
+    raw = {
+        "fdcId": 100,
+        "description": "Foundation food",
+        "foodNutrients": [
+            {"nutrient": {"id": 1008}, "amount": 90},
+            {"nutrient": {"id": 2047}, "amount": 80},
+            {"nutrient": {"id": 2048}, "amount": 85},
+        ],
+    }
+
+    food = normalize_usda_food(raw)
+
+    assert food["calories_kcal"] == 90
