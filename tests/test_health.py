@@ -6,6 +6,7 @@ def test_root_identifies_service(client):
     assert 'href="/docs"' in r.text
     assert "Designed for AI clients." in r.text
     assert "https://github.com/gregmushen/nutritiontracker" in r.text
+    assert client.head("/").status_code == 200
 
 
 def test_favicon(client):
@@ -13,6 +14,7 @@ def test_favicon(client):
     assert r.status_code == 200
     assert r.headers["content-type"] == "image/svg+xml"
     assert "<svg" in r.text
+    assert client.head("/favicon.svg").status_code == 200
 
 
 def test_health(client):

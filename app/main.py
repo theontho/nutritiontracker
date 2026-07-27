@@ -67,7 +67,9 @@ app.include_router(activity_router, dependencies=_auth)
 app.include_router(imports_router, dependencies=_auth)
 
 
-@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+@app.api_route(
+    "/", methods=["GET", "HEAD"], response_class=HTMLResponse, include_in_schema=False
+)
 def root():
     return """<!doctype html>
 <html lang="en">
@@ -170,7 +172,7 @@ def root():
 </html>"""
 
 
-@app.get("/favicon.svg", include_in_schema=False)
+@app.api_route("/favicon.svg", methods=["GET", "HEAD"], include_in_schema=False)
 def favicon():
     return FileResponse(FAVICON_PATH, media_type="image/svg+xml")
 
