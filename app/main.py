@@ -157,9 +157,9 @@ def root():
       activity, weight, recipes, and kitchen inventory.
     </p>
     <p class="ai-note">
-      <strong>Designed for AI clients.</strong> Give your assistant the
-      OpenAPI schema so it can search foods, log entries, and answer questions
-      using your nutrition data.
+      <strong>Use it with an AI assistant.</strong> Give your assistant the
+      link to this page. It can follow the links and figure out how to interact
+      with the service.
     </p>
     <nav>
       <a href="/docs">Explore API</a>
