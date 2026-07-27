@@ -4,6 +4,8 @@ def test_root_identifies_service(client):
     assert "<title>Nutrition Tracker Service</title>" in r.text
     assert 'href="/favicon.svg"' in r.text
     assert 'href="/docs"' in r.text
+    assert "Designed for AI clients." in r.text
+    assert "https://github.com/gregmushen/nutritiontracker" in r.text
 
 
 def test_favicon(client):
