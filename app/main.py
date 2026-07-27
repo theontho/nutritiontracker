@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
+from fastapi.responses import HTMLResponse
+from setproctitle import setproctitle
 
 from app.auth import require_auth
 from app.config import settings
@@ -10,15 +12,16 @@ from app.routes.activity import router as activity_router
 from app.routes.diary import router as diary_router
 from app.routes.foods import router as foods_router
 from app.routes.imports import router as imports_router
-from app.routes.recipes import router as recipes_router
-from app.routes.stats import router as stats_router
 from app.routes.journal import router as journal_router
 from app.routes.kitchen import router as kitchen_router
+from app.routes.recipes import router as recipes_router
+from app.routes.stats import router as stats_router
 from app.routes.weight import router as weight_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setproctitle("Nutrition Service")
     conn = get_connection()
     init_schema(conn)
     FoodRepository(conn).ensure_fts()
@@ -59,6 +62,19 @@ app.include_router(recipes_router, dependencies=_auth)
 app.include_router(kitchen_router, dependencies=_auth)
 app.include_router(activity_router, dependencies=_auth)
 app.include_router(imports_router, dependencies=_auth)
+
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def root():
+    return """<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Nutrition Service</title></head>
+<body>
+  <h1>Nutrition Service</h1>
+  <p>Nutrition Tracker API</p>
+  <nav><a href="/docs">API docs</a> · <a href="/health">Health</a></nav>
+</body>
+</html>"""
 
 
 @app.get("/health")
