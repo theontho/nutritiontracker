@@ -4,6 +4,8 @@ A personal nutrition tracking API built with FastAPI and SQLite.
 
 **Live:** https://n.paracosmlab.com — OpenAPI schema at `/openapi.json`
 
+![Nutrition Tracker Service landing page](docs/images/nutrition-tracker-service.png)
+
 ## What it does
 
 REST API for logging food, weight, activity, and journal entries. Designed to be called by AI agents or mobile clients.
