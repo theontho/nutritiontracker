@@ -8,10 +8,10 @@ def test_normalize_usda_food():
         "brandName": None,
         "gtinUpc": "",
         "foodNutrients": [
-            {"nutrientId": 1008, "value": 89},  # Energy
-            {"nutrientId": 1003, "value": 1.1},  # Protein
+            {"nutrientId": 1008, "value": 89},   # Energy
+            {"nutrientId": 1003, "value": 1.1},   # Protein
             {"nutrientId": 1005, "value": 22.8},  # Carbs
-            {"nutrientId": 1004, "value": 0.3},  # Fat
+            {"nutrientId": 1004, "value": 0.3},   # Fat
         ],
     }
     food = normalize_usda_food(raw)

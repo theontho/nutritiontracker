@@ -12,12 +12,8 @@ def repo(db):
 
 def test_create_and_get(repo):
     food_id = repo.create(
-        source="custom",
-        name="Banana",
-        calories_kcal=89,
-        protein_g=1.1,
-        carbs_g=22.8,
-        fat_g=0.3,
+        source="custom", name="Banana", calories_kcal=89, protein_g=1.1,
+        carbs_g=22.8, fat_g=0.3,
     )
     food = repo.get(food_id)
     assert food["name"] == "Banana"
