@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import Depends, FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from setproctitle import setproctitle
 
 from app.auth import require_auth
@@ -18,10 +19,12 @@ from app.routes.recipes import router as recipes_router
 from app.routes.stats import router as stats_router
 from app.routes.weight import router as weight_router
 
+FAVICON_PATH = Path(__file__).parent / "static" / "favicon.svg"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    setproctitle("Nutrition Service")
+    setproctitle("Nutrition Tracker Service")
     conn = get_connection()
     init_schema(conn)
     FoodRepository(conn).ensure_fts()
@@ -68,13 +71,23 @@ app.include_router(imports_router, dependencies=_auth)
 def root():
     return """<!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><title>Nutrition Service</title></head>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nutrition Tracker Service</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+</head>
 <body>
-  <h1>Nutrition Service</h1>
-  <p>Nutrition Tracker API</p>
+  <h1>Nutrition Tracker Service</h1>
+  <p>API for food, nutrition, activity, and weight tracking.</p>
   <nav><a href="/docs">API docs</a> · <a href="/health">Health</a></nav>
 </body>
 </html>"""
+
+
+@app.get("/favicon.svg", include_in_schema=False)
+def favicon():
+    return FileResponse(FAVICON_PATH, media_type="image/svg+xml")
 
 
 @app.get("/health")

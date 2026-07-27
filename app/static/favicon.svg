@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Nutrition Tracker Service</title>
+  <rect width="64" height="64" rx="14" fill="#166534"/>
+  <path d="M34 15c2-6 7-8 12-7-1 6-5 9-12 9z" fill="#86efac"/>
+  <circle cx="32" cy="36" r="19" fill="#f0fdf4"/>
+  <path d="M21 43V33h5v10zm9 0V27h5v16zm9 0V21h5v22z" fill="#22c55e"/>
+</svg>
