@@ -76,6 +76,16 @@ def _parse_serving_quantity(raw: dict) -> float | None:
         return None
 
 
+def _parse_product_quantity(raw: dict) -> float | None:
+    value = raw.get("product_quantity")
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return None
+
+
 def _get_nutrient_value(
     nutriments: dict, source_keys: tuple[str, ...], default_unit: str, target_unit: str
 ) -> float:
@@ -108,6 +118,16 @@ def normalize_off_food(raw: dict) -> dict:
         "serving_quantity": _parse_serving_quantity(raw),
         "serving_unit": "g",
         "serving_size_text": raw.get("serving_size") or None,
+        "ingredients_text": raw.get("ingredients_text") or None,
+        "allergens_tags": raw.get("allergens_tags") or [],
+        "dietary_tags": raw.get("ingredients_analysis_tags") or [],
+        "categories_tags": raw.get("categories_tags") or [],
+        "labels_tags": raw.get("labels_tags") or [],
+        "countries_tags": raw.get("countries_tags") or [],
+        "nutriscore_grade": raw.get("nutriscore_grade") or None,
+        "nova_group": raw.get("nova_group"),
+        "product_quantity": _parse_product_quantity(raw),
+        "product_quantity_unit": raw.get("product_quantity_unit") or None,
         **nutrients,
     }
 

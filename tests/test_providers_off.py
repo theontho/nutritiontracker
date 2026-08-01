@@ -9,6 +9,16 @@ def test_normalize_off_food():
         "image_url": "https://example.com/nutella.jpg",
         "serving_quantity": "15",
         "serving_size": "15 g",
+        "ingredients_text": "Sugar, hazelnuts",
+        "allergens_tags": ["en:milk", "en:nuts"],
+        "ingredients_analysis_tags": ["en:vegetarian"],
+        "categories_tags": ["en:spreads"],
+        "labels_tags": ["en:gluten-free"],
+        "countries_tags": ["en:united-states"],
+        "nutriscore_grade": "e",
+        "nova_group": 4,
+        "product_quantity": "350",
+        "product_quantity_unit": "g",
         "nutriments": {
             "energy-kcal_100g": 539,
             "proteins_100g": 6.3,
@@ -40,6 +50,12 @@ def test_normalize_off_food():
     assert food["caffeine_mg"] == 56.338
     assert food["niacin_mg"] == 5.6338
     assert food["vitamin_c_mg"] == 16.9
+    assert food["ingredients_text"] == "Sugar, hazelnuts"
+    assert food["allergens_tags"] == ["en:milk", "en:nuts"]
+    assert food["dietary_tags"] == ["en:vegetarian"]
+    assert food["nutriscore_grade"] == "e"
+    assert food["nova_group"] == 4
+    assert food["product_quantity"] == 350
 
 
 def test_normalize_handles_missing_fields():
