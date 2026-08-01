@@ -1,5 +1,7 @@
 import sqlite3
 
+from app.models.food import NUTRIENT_FIELDS
+
 
 class FoodRepository:
     def __init__(self, conn: sqlite3.Connection):
@@ -31,19 +33,12 @@ class FoodRepository:
         """)
 
     def create(self, *, source: str, name: str, **kwargs) -> int:
-        nutrient_fields = [
-            "calories_kcal", "protein_g", "carbs_g", "fat_g", "sugar_g",
-            "saturated_fat_g", "fiber_g", "sodium_mg", "potassium_mg",
-            "calcium_mg", "iron_mg", "magnesium_mg", "zinc_mg", "phosphorus_mg",
-            "vitamin_a_ug", "vitamin_c_mg", "vitamin_d_ug", "vitamin_b6_mg",
-            "vitamin_b12_ug", "niacin_mg",
-        ]
         other_fields = [
             "source_code", "brand", "barcode", "image_url", "serving_quantity",
             "serving_unit", "serving_size_text", "base_quantity", "base_unit",
             "density_g_per_ml",
         ]
-        all_fields = other_fields + nutrient_fields
+        all_fields = other_fields + list(NUTRIENT_FIELDS)
         fields = ["source", "name"]
         values = [source, name]
         for f in all_fields:
@@ -62,19 +57,12 @@ class FoodRepository:
         """Same as create() but without committing — caller manages transactions for bulk imports."""
         source = kwargs.pop("source")
         name = kwargs.pop("name")
-        nutrient_fields = [
-            "calories_kcal", "protein_g", "carbs_g", "fat_g", "sugar_g",
-            "saturated_fat_g", "fiber_g", "sodium_mg", "potassium_mg",
-            "calcium_mg", "iron_mg", "magnesium_mg", "zinc_mg", "phosphorus_mg",
-            "vitamin_a_ug", "vitamin_c_mg", "vitamin_d_ug", "vitamin_b6_mg",
-            "vitamin_b12_ug", "niacin_mg",
-        ]
         other_fields = [
             "source_code", "brand", "barcode", "image_url", "serving_quantity",
             "serving_unit", "serving_size_text", "base_quantity", "base_unit",
             "density_g_per_ml",
         ]
-        all_fields = other_fields + nutrient_fields
+        all_fields = other_fields + list(NUTRIENT_FIELDS)
         fields = ["source", "name"]
         values = [source, name]
         for f in all_fields:

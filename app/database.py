@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+
 from app.config import settings
 
 
@@ -34,8 +35,14 @@ def init_schema(conn: sqlite3.Connection) -> None:
             carbs_g REAL DEFAULT 0,
             fat_g REAL DEFAULT 0,
             sugar_g REAL DEFAULT 0,
+            added_sugar_g REAL DEFAULT 0,
             saturated_fat_g REAL DEFAULT 0,
+            trans_fat_g REAL DEFAULT 0,
+            monounsaturated_fat_g REAL DEFAULT 0,
+            polyunsaturated_fat_g REAL DEFAULT 0,
             fiber_g REAL DEFAULT 0,
+            cholesterol_mg REAL DEFAULT 0,
+            caffeine_mg REAL DEFAULT 0,
             sodium_mg REAL DEFAULT 0,
             potassium_mg REAL DEFAULT 0,
             calcium_mg REAL DEFAULT 0,
@@ -43,12 +50,26 @@ def init_schema(conn: sqlite3.Connection) -> None:
             magnesium_mg REAL DEFAULT 0,
             zinc_mg REAL DEFAULT 0,
             phosphorus_mg REAL DEFAULT 0,
+            copper_mg REAL DEFAULT 0,
+            manganese_mg REAL DEFAULT 0,
+            selenium_ug REAL DEFAULT 0,
+            chromium_ug REAL DEFAULT 0,
+            iodine_ug REAL DEFAULT 0,
             vitamin_a_ug REAL DEFAULT 0,
             vitamin_c_mg REAL DEFAULT 0,
             vitamin_d_ug REAL DEFAULT 0,
+            vitamin_e_mg REAL DEFAULT 0,
+            vitamin_k_ug REAL DEFAULT 0,
+            thiamin_mg REAL DEFAULT 0,
+            riboflavin_mg REAL DEFAULT 0,
             vitamin_b6_mg REAL DEFAULT 0,
             vitamin_b12_ug REAL DEFAULT 0,
             niacin_mg REAL DEFAULT 0,
+            pantothenic_acid_mg REAL DEFAULT 0,
+            biotin_ug REAL DEFAULT 0,
+            folate_ug REAL DEFAULT 0,
+            folic_acid_ug REAL DEFAULT 0,
+            choline_mg REAL DEFAULT 0,
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         );

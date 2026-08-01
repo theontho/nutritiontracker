@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
-from app.models.food import FoodCreate, FoodUpdate, FoodOut
+
+from app.models.food import NUTRIENT_FIELDS, FoodCreate, FoodOut, FoodUpdate
 from app.providers.open_food_facts import fetch_off_by_barcode
 from app.repositories.foods import FoodRepository
 from app.services.food_search import FoodSearchService
@@ -33,26 +34,24 @@ def _has_nutrients(food: dict) -> bool:
 def get_by_barcode(request: Request, barcode: str):
     """Look up a food by EAN or UPC barcode.
 
-    If the local record has no nutrient data, falls back to the live
-    OpenFoodFacts API. If that also has no data, returns the local record
-    as-is so the caller can PATCH it with correct values.
+    On a local miss, fetches and caches a matching live OpenFoodFacts record.
+    If a local OpenFoodFacts record has no nutrient data, refreshes it from
+    the live API. If that also has no data, returns the local record as-is so
+    the caller can PATCH it with correct values.
     """
     repo = _repo(request)
     food = repo.get_by_barcode(barcode)
     if not food:
-        raise HTTPException(404, "Food not found")
+        fresh = fetch_off_by_barcode(barcode)
+        if not fresh:
+            raise HTTPException(404, "Food not found")
+        food_id = repo.create(**fresh)
+        return repo.get(food_id)
 
     if not _has_nutrients(food) and food.get("source") == "open_food_facts":
         fresh = fetch_off_by_barcode(barcode)
         if fresh:
-            nutrient_fields = [
-                "calories_kcal", "protein_g", "carbs_g", "fat_g", "sugar_g",
-                "saturated_fat_g", "fiber_g", "sodium_mg", "potassium_mg",
-                "calcium_mg", "iron_mg", "magnesium_mg", "zinc_mg", "phosphorus_mg",
-                "vitamin_a_ug", "vitamin_c_mg", "vitamin_d_ug", "vitamin_b6_mg",
-                "vitamin_b12_ug", "niacin_mg",
-            ]
-            updates = {k: fresh[k] for k in nutrient_fields if fresh.get(k)}
+            updates = {k: fresh[k] for k in NUTRIENT_FIELDS if fresh.get(k)}
             if updates:
                 repo.update(food["id"], **updates)
                 food = repo.get(food["id"])
