@@ -3,28 +3,67 @@ import httpx
 OFF_API_URL = "https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
 OFF_TIMEOUT = 5.0  # seconds
 
-NUTRIMENT_MAP = {
-    "energy-kcal_100g": "calories_kcal",
-    "proteins_100g": "protein_g",
-    "carbohydrates_100g": "carbs_g",
-    "fat_100g": "fat_g",
-    "sugars_100g": "sugar_g",
-    "saturated-fat_100g": "saturated_fat_g",
-    "fiber_100g": "fiber_g",
-    "sodium_100g": "sodium_mg",
-    "potassium_100g": "potassium_mg",
-    "calcium_100g": "calcium_mg",
-    "iron_100g": "iron_mg",
-    "magnesium_100g": "magnesium_mg",
-    "zinc_100g": "zinc_mg",
-    "phosphorus_100g": "phosphorus_mg",
-    "vitamin-a_100g": "vitamin_a_ug",
-    "vitamin-c_100g": "vitamin_c_mg",
-    "vitamin-d_100g": "vitamin_d_ug",
-    "vitamin-b6_100g": "vitamin_b6_mg",
-    "vitamin-b12_100g": "vitamin_b12_ug",
-    "niacin_100g": "niacin_mg",
+OFF_NUTRIENT_MAP = {
+    "calories_kcal": (("energy-kcal",), "kcal", "kcal"),
+    "protein_g": (("proteins",), "g", "g"),
+    "carbs_g": (("carbohydrates",), "g", "g"),
+    "fat_g": (("fat",), "g", "g"),
+    "sugar_g": (("sugars",), "g", "g"),
+    "added_sugar_g": (("added-sugars",), "g", "g"),
+    "saturated_fat_g": (("saturated-fat",), "g", "g"),
+    "trans_fat_g": (("trans-fat",), "g", "g"),
+    "monounsaturated_fat_g": (("monounsaturated-fat",), "g", "g"),
+    "polyunsaturated_fat_g": (("polyunsaturated-fat",), "g", "g"),
+    "fiber_g": (("fiber",), "g", "g"),
+    "cholesterol_mg": (("cholesterol",), "mg", "mg"),
+    "caffeine_mg": (("caffeine",), "mg", "mg"),
+    "sodium_mg": (("sodium",), "g", "mg"),
+    "potassium_mg": (("potassium",), "mg", "mg"),
+    "calcium_mg": (("calcium",), "mg", "mg"),
+    "iron_mg": (("iron",), "mg", "mg"),
+    "magnesium_mg": (("magnesium",), "mg", "mg"),
+    "zinc_mg": (("zinc",), "mg", "mg"),
+    "phosphorus_mg": (("phosphorus",), "mg", "mg"),
+    "copper_mg": (("copper",), "mg", "mg"),
+    "manganese_mg": (("manganese",), "mg", "mg"),
+    "selenium_ug": (("selenium",), "ug", "ug"),
+    "chromium_ug": (("chromium",), "ug", "ug"),
+    "iodine_ug": (("iodine",), "ug", "ug"),
+    "vitamin_a_ug": (("vitamin-a",), "ug", "ug"),
+    "vitamin_c_mg": (("vitamin-c",), "mg", "mg"),
+    "vitamin_d_ug": (("vitamin-d",), "ug", "ug"),
+    "vitamin_e_mg": (("vitamin-e",), "mg", "mg"),
+    "vitamin_k_ug": (("vitamin-k",), "ug", "ug"),
+    "thiamin_mg": (("vitamin-b1",), "mg", "mg"),
+    "riboflavin_mg": (("vitamin-b2",), "mg", "mg"),
+    "vitamin_b6_mg": (("vitamin-b6",), "mg", "mg"),
+    "vitamin_b12_ug": (("vitamin-b12",), "ug", "ug"),
+    "niacin_mg": (("vitamin-pp", "niacin"), "mg", "mg"),
+    "pantothenic_acid_mg": (("pantothenic-acid",), "mg", "mg"),
+    "biotin_ug": (("biotin",), "ug", "ug"),
+    "folate_ug": (("folates",), "ug", "ug"),
+    "folic_acid_ug": (("vitamin-b9",), "ug", "ug"),
+    "choline_mg": (("choline",), "g", "mg"),
 }
+
+_UNIT_FACTORS_TO_GRAMS = {
+    "g": 1,
+    "mg": 0.001,
+    "ug": 0.000001,
+    "mcg": 0.000001,
+}
+
+
+def _normalized_unit(unit: str) -> str:
+    return unit.lower().replace("μ", "u").replace("µ", "u")
+
+
+def _convert_unit(value: float, source_unit: str, target_unit: str) -> float:
+    if source_unit == target_unit:
+        return value
+    if source_unit == "kcal" or target_unit == "kcal":
+        raise ValueError(f"Cannot convert {source_unit} to {target_unit}")
+    return value * _UNIT_FACTORS_TO_GRAMS[source_unit] / _UNIT_FACTORS_TO_GRAMS[target_unit]
 
 
 def _parse_serving_quantity(raw: dict) -> float | None:
@@ -37,18 +76,27 @@ def _parse_serving_quantity(raw: dict) -> float | None:
         return None
 
 
+def _get_nutrient_value(
+    nutriments: dict, source_keys: tuple[str, ...], default_unit: str, target_unit: str
+) -> float:
+    for source_key in source_keys:
+        value = nutriments.get(f"{source_key}_100g")
+        if value is None:
+            continue
+        try:
+            source_unit = _normalized_unit(nutriments.get(f"{source_key}_unit", default_unit))
+            return _convert_unit(float(value), source_unit, target_unit)
+        except (KeyError, TypeError, ValueError):
+            return 0
+    return 0
+
+
 def normalize_off_food(raw: dict) -> dict:
     nutriments = raw.get("nutriments", {})
-    # Keys where OFF stores values in grams but we need milligrams
-    G_TO_MG_KEYS = {"sodium_mg", "potassium_mg", "calcium_mg", "iron_mg",
-                     "magnesium_mg", "zinc_mg", "phosphorus_mg"}
-
-    nutrients = {}
-    for off_key, our_key in NUTRIMENT_MAP.items():
-        val = nutriments.get(off_key, 0) or 0
-        if our_key in G_TO_MG_KEYS:
-            val = val * 1000  # OFF stores these in grams per 100g
-        nutrients[our_key] = val
+    nutrients = {
+        field: _get_nutrient_value(nutriments, source_keys, source_unit, target_unit)
+        for field, (source_keys, source_unit, target_unit) in OFF_NUTRIENT_MAP.items()
+    }
 
     return {
         "source": "open_food_facts",
@@ -78,7 +126,7 @@ def fetch_off_by_barcode(barcode: str) -> dict | None:
         )
         resp.raise_for_status()
         data = resp.json()
-    except Exception:
+    except (httpx.HTTPError, ValueError):
         return None
 
     if data.get("status") != 1:

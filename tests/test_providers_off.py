@@ -18,6 +18,14 @@ def test_normalize_off_food():
             "saturated-fat_100g": 10.6,
             "fiber_100g": 3.4,
             "sodium_100g": 0.041,
+            "calcium_100g": 120,
+            "calcium_unit": "mg",
+            "caffeine_100g": 0.056338,
+            "caffeine_unit": "g",
+            "vitamin-pp_100g": 5.6338,
+            "vitamin-pp_unit": "mg",
+            "vitamin-c_100g": 16.9,
+            "vitamin-c_unit": "mg",
         },
     }
     food = normalize_off_food(raw)
@@ -28,6 +36,10 @@ def test_normalize_off_food():
     assert food["calories_kcal"] == 539
     assert food["protein_g"] == 6.3
     assert food["sodium_mg"] == 41  # 0.041g * 1000
+    assert food["calcium_mg"] == 120
+    assert food["caffeine_mg"] == 56.338
+    assert food["niacin_mg"] == 5.6338
+    assert food["vitamin_c_mg"] == 16.9
 
 
 def test_normalize_handles_missing_fields():

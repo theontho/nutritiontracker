@@ -12,7 +12,7 @@ REST API for logging food, weight, activity, and journal entries. Designed to be
 
 Key endpoints:
 - `GET /foods/search?q=` — full-text search across USDA + OpenFoodFacts + custom foods
-- `GET /foods/barcode/{barcode}` — barcode lookup
+- `GET /foods/barcode/{barcode}` — barcode lookup; caches a matching live Open Food Facts product on a local miss
 - `POST /diary/{date}/entries` — log what you ate
 - `GET /stats/daily/{date}` — daily nutrition totals with meal breakdown
 - `POST /weight` — log body weight
@@ -83,3 +83,20 @@ bin/import-off /home/gregmushen/nutrition-data/openfoodfacts-products.jsonl.gz \
 ```
 
 Both scripts auto-detect the current running container image. Re-running an import is safe — records are upserted by `(source, source_code)`.
+
+## Nutrients
+
+Foods track macronutrients plus added sugar, fat subtypes, cholesterol, caffeine,
+minerals, trace minerals, and vitamins A, C, D, E, K, and B-complex nutrients.
+USDA and Open Food Facts imports normalize each source's units to the API's
+per-100 g fields.
+
+To rebuild a new database from the local USDA export and Open Food Facts dump:
+
+```bash
+python -m scripts.rebuild_food_database data/nutrition-enriched.db \
+  data/imports/openfoodfacts/food.parquet \
+  --foundation-json=data/imports/usda/foundation/FoodData_Central_foundation_food_json_2026-04-30.json \
+  --foundation-csv-dir=data/imports/usda/foundation-csv/FoodData_Central_foundation_food_csv_2026-04-30 \
+  --sr-legacy-json=data/imports/usda/sr-legacy/FoodData_Central_sr_legacy_food_json_2018-04.json
+```

@@ -1,6 +1,7 @@
 import pytest
-from app.models.food import NutrientsPer100, FoodCreate
+
 from app.models.diary import DiaryEntryCreate
+from app.models.food import FoodCreate, NutrientsPer100
 from app.models.recipe import RecipeCreate, RecipeIngredientInput
 from app.models.weight import WeightEntryCreate
 
@@ -10,6 +11,8 @@ def test_nutrients_defaults_to_zeros():
     assert n.calories_kcal == 0
     assert n.protein_g == 0
     assert n.niacin_mg == 0
+    assert n.caffeine_mg == 0
+    assert n.riboflavin_mg == 0
 
 
 def test_food_create_minimal():

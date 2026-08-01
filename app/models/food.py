@@ -1,6 +1,7 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
 from typing import Literal
+
+from pydantic import BaseModel, Field
 
 
 class NutrientsPer100(BaseModel):
@@ -9,8 +10,14 @@ class NutrientsPer100(BaseModel):
     carbs_g: float = 0
     fat_g: float = 0
     sugar_g: float = 0
+    added_sugar_g: float = 0
     saturated_fat_g: float = 0
+    trans_fat_g: float = 0
+    monounsaturated_fat_g: float = 0
+    polyunsaturated_fat_g: float = 0
     fiber_g: float = 0
+    cholesterol_mg: float = 0
+    caffeine_mg: float = 0
     sodium_mg: float = 0
     potassium_mg: float = 0
     calcium_mg: float = 0
@@ -18,12 +25,29 @@ class NutrientsPer100(BaseModel):
     magnesium_mg: float = 0
     zinc_mg: float = 0
     phosphorus_mg: float = 0
+    copper_mg: float = 0
+    manganese_mg: float = 0
+    selenium_ug: float = 0
+    chromium_ug: float = 0
+    iodine_ug: float = 0
     vitamin_a_ug: float = 0
     vitamin_c_mg: float = 0
     vitamin_d_ug: float = 0
+    vitamin_e_mg: float = 0
+    vitamin_k_ug: float = 0
+    thiamin_mg: float = 0
+    riboflavin_mg: float = 0
     vitamin_b6_mg: float = 0
     vitamin_b12_ug: float = 0
     niacin_mg: float = 0
+    pantothenic_acid_mg: float = 0
+    biotin_ug: float = 0
+    folate_ug: float = 0
+    folic_acid_ug: float = 0
+    choline_mg: float = 0
+
+
+NUTRIENT_FIELDS = tuple(NutrientsPer100.model_fields)
 
 
 SourceType = Literal["custom", "open_food_facts", "food_data_central", "recipe"]
@@ -83,8 +107,14 @@ class FoodOut(BaseModel):
     carbs_g: float = 0
     fat_g: float = 0
     sugar_g: float = 0
+    added_sugar_g: float = 0
     saturated_fat_g: float = 0
+    trans_fat_g: float = 0
+    monounsaturated_fat_g: float = 0
+    polyunsaturated_fat_g: float = 0
     fiber_g: float = 0
+    cholesterol_mg: float = 0
+    caffeine_mg: float = 0
     sodium_mg: float = 0
     potassium_mg: float = 0
     calcium_mg: float = 0
@@ -92,12 +122,26 @@ class FoodOut(BaseModel):
     magnesium_mg: float = 0
     zinc_mg: float = 0
     phosphorus_mg: float = 0
+    copper_mg: float = 0
+    manganese_mg: float = 0
+    selenium_ug: float = 0
+    chromium_ug: float = 0
+    iodine_ug: float = 0
     vitamin_a_ug: float = 0
     vitamin_c_mg: float = 0
     vitamin_d_ug: float = 0
+    vitamin_e_mg: float = 0
+    vitamin_k_ug: float = 0
+    thiamin_mg: float = 0
+    riboflavin_mg: float = 0
     vitamin_b6_mg: float = 0
     vitamin_b12_ug: float = 0
     niacin_mg: float = 0
+    pantothenic_acid_mg: float = 0
+    biotin_ug: float = 0
+    folate_ug: float = 0
+    folic_acid_ug: float = 0
+    choline_mg: float = 0
     created_at: datetime
     updated_at: datetime
 
