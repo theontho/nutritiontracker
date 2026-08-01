@@ -12,12 +12,20 @@ from app.database import get_connection, init_schema
 from app.providers.open_food_facts import normalize_off_food
 from app.repositories.foods import FoodRepository
 
-
 PARQUET_COLUMNS = (
     "code",
     "product_name",
     "brands",
+    "allergens_tags",
+    "ingredients_analysis_tags",
+    "categories_tags",
+    "labels_tags",
     "countries_tags",
+    "ingredients_text",
+    "nutriscore_grade",
+    "nova_group",
+    "product_quantity",
+    "product_quantity_unit",
     "serving_quantity",
     "serving_size",
     "nutriments",
@@ -48,6 +56,16 @@ def parquet_row_to_off_product(row: dict) -> dict:
         "code": row.get("code") or "",
         "product_name": _product_name(row.get("product_name")),
         "brands": row.get("brands"),
+        "allergens_tags": row.get("allergens_tags") or [],
+        "ingredients_analysis_tags": row.get("ingredients_analysis_tags") or [],
+        "categories_tags": row.get("categories_tags") or [],
+        "labels_tags": row.get("labels_tags") or [],
+        "countries_tags": row.get("countries_tags") or [],
+        "ingredients_text": _product_name(row.get("ingredients_text")),
+        "nutriscore_grade": row.get("nutriscore_grade"),
+        "nova_group": row.get("nova_group"),
+        "product_quantity": row.get("product_quantity"),
+        "product_quantity_unit": row.get("product_quantity_unit"),
         "serving_quantity": row.get("serving_quantity"),
         "serving_size": row.get("serving_size"),
         "nutriments": nutriments,
@@ -72,7 +90,10 @@ def import_off_parquet(
     imported = 0
     skipped = 0
     parquet_file = pq.ParquetFile(file_path)
-    for batch in parquet_file.iter_batches(batch_size=10_000, columns=PARQUET_COLUMNS):
+    columns = [
+        column for column in PARQUET_COLUMNS if column in parquet_file.schema_arrow.names
+    ]
+    for batch in parquet_file.iter_batches(batch_size=10_000, columns=columns):
         for row in batch.to_pylist():
             if country and country not in (row.get("countries_tags") or []):
                 skipped += 1
