@@ -1,6 +1,9 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import Depends, FastAPI
+from fastapi.responses import FileResponse
+from setproctitle import setproctitle
 
 from app.auth import require_auth
 from app.config import settings
@@ -10,15 +13,20 @@ from app.routes.activity import router as activity_router
 from app.routes.diary import router as diary_router
 from app.routes.foods import router as foods_router
 from app.routes.imports import router as imports_router
-from app.routes.recipes import router as recipes_router
-from app.routes.stats import router as stats_router
 from app.routes.journal import router as journal_router
 from app.routes.kitchen import router as kitchen_router
+from app.routes.recipes import router as recipes_router
+from app.routes.stats import router as stats_router
 from app.routes.weight import router as weight_router
+
+STATIC_DIR = Path(__file__).parent / "static"
+LANDING_PAGE_PATH = STATIC_DIR / "index.html"
+FAVICON_PATH = STATIC_DIR / "favicon.svg"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setproctitle("Nutrition Tracker Service")
     conn = get_connection()
     init_schema(conn)
     FoodRepository(conn).ensure_fts()
@@ -59,6 +67,16 @@ app.include_router(recipes_router, dependencies=_auth)
 app.include_router(kitchen_router, dependencies=_auth)
 app.include_router(activity_router, dependencies=_auth)
 app.include_router(imports_router, dependencies=_auth)
+
+
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+def root():
+    return FileResponse(LANDING_PAGE_PATH, media_type="text/html")
+
+
+@app.api_route("/favicon.svg", methods=["GET", "HEAD"], include_in_schema=False)
+def favicon():
+    return FileResponse(FAVICON_PATH, media_type="image/svg+xml")
 
 
 @app.get("/health")
