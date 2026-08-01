@@ -54,6 +54,15 @@ bin/import-usda /home/gregmushen/nutrition-data/FoodData_Central_sr_legacy_food_
 bin/import-usda /home/gregmushen/nutrition-data/foundationDownload.json
 ```
 
+For Foundation Foods, also extract the matching CSV archive and pass its
+directory as a fallback. Records omitted or invalid in the JSON export are
+reconstructed from `food.csv`, `foundation_food.csv`, and `food_nutrient.csv`:
+
+```bash
+bin/import-usda /home/gregmushen/nutrition-data/foundationDownload.json \
+  --csv-dir=/home/gregmushen/nutrition-data/foundation-food-csv
+```
+
 ### OpenFoodFacts (US products)
 
 Download the full compressed JSONL (~12 GB) once:

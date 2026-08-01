@@ -2,23 +2,34 @@
 # Import USDA FoodData Central JSON into the production database.
 #
 # Usage:
-#   bin/import-usda <path-to-usda-json>
+#   bin/import-usda <path-to-usda-json> [--csv-dir=<path-to-foundation-csv-dir>]
 #
 # The file must be on the garageband host (e.g. /home/gregmushen/nutrition-data/).
 # The script detects the current running container image automatically.
 #
 # Download datasets from: https://fdc.nal.usda.gov/download-datasets
-#   - Foundation Foods JSON
+#   - Foundation Foods JSON and CSV (CSV fills records omitted from JSON)
 #   - SR Legacy Foods JSON
 
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: bin/import-usda <path-to-usda-json-on-host>" >&2
+  echo "Usage: bin/import-usda <path-to-usda-json-on-host> [--csv-dir=<path-on-host>]" >&2
   exit 1
 fi
 
 HOST_FILE="$1"
+shift
+CSV_DIR=""
+for arg in "$@"; do
+  case "$arg" in
+    --csv-dir=*) CSV_DIR="${arg#*=}" ;;
+    *)
+      echo "Unknown option: $arg" >&2
+      exit 1
+      ;;
+  esac
+done
 HOST="192.168.60.55"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/stupidclaw_garageband_ed25519}"
 SSH="ssh -i $SSH_KEY -o StrictHostKeyChecking=no gregmushen@$HOST"
@@ -28,11 +39,21 @@ IMAGE=$($SSH "docker inspect \$(docker ps --filter name=nutritiontracker-web --f
 echo "Using image: $IMAGE"
 echo "Importing: $HOST_FILE"
 
+CSV_MOUNT=""
+CSV_ARG=""
+if [[ -n "$CSV_DIR" ]]; then
+  echo "CSV fallback: $CSV_DIR"
+  CSV_MOUNT="-v '$CSV_DIR':/nutrition-csv:ro"
+  CSV_ARG="--csv-dir=/nutrition-csv"
+fi
+
 $SSH "docker run --rm \
   -v \$(dirname '$HOST_FILE'):/nutrition-data \
+  $CSV_MOUNT \
   -v nutritiontracker_data:/data \
   --entrypoint python \
   '$IMAGE' \
   -m scripts.import_usda \
   /nutrition-data/\$(basename '$HOST_FILE') \
-  /data/nutrition.db"
+  /data/nutrition.db \
+  $CSV_ARG"

@@ -1,6 +1,8 @@
 # USDA nutrient ID → our field name
 NUTRIENT_MAP = {
     1008: "calories_kcal",
+    2047: "calories_kcal",
+    2048: "calories_kcal",
     1003: "protein_g",
     1005: "carbs_g",
     1004: "fat_g",
@@ -22,14 +24,25 @@ NUTRIENT_MAP = {
     1167: "niacin_mg",
 }
 
+NUTRIENT_PRIORITY = {
+    2047: 1,
+    2048: 2,
+    1008: 3,
+}
+
 
 def normalize_usda_food(raw: dict) -> dict:
     nutrients = {}
+    priorities = {}
     for fn in raw.get("foodNutrients", []):
         # Support both flat nutrientId (some formats) and nested nutrient.id (SR Legacy, Foundation)
         nid = fn.get("nutrientId") or fn.get("nutrient", {}).get("id")
         if nid in NUTRIENT_MAP:
-            nutrients[NUTRIENT_MAP[nid]] = fn.get("amount") or fn.get("value") or 0
+            field = NUTRIENT_MAP[nid]
+            priority = NUTRIENT_PRIORITY.get(nid, 0)
+            if priority >= priorities.get(field, -1):
+                nutrients[field] = fn.get("amount") or fn.get("value") or 0
+                priorities[field] = priority
 
     return {
         "source": "food_data_central",

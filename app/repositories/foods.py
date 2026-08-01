@@ -83,10 +83,23 @@ class FoodRepository:
                 values.append(kwargs[f])
         placeholders = ", ".join(["?"] * len(values))
         cols = ", ".join(fields)
+        conflict_clause = ""
+        if "source_code" in fields:
+            updates = ", ".join(
+                f"{field} = excluded.{field}"
+                for field in fields
+                if field not in ("source", "source_code")
+            )
+            conflict_clause = (
+                " ON CONFLICT(source, source_code) WHERE source_code IS NOT NULL"
+                f" DO UPDATE SET {updates}, updated_at = datetime('now')"
+            )
         cur = self.conn.execute(
-            f"INSERT OR REPLACE INTO foods ({cols}) VALUES ({placeholders})", values
+            f"INSERT INTO foods ({cols}) VALUES ({placeholders})"
+            f"{conflict_clause} RETURNING id",
+            values,
         )
-        return cur.lastrowid
+        return cur.fetchone()[0]
 
     def get(self, food_id: int) -> dict | None:
         row = self.conn.execute("SELECT * FROM foods WHERE id = ?", (food_id,)).fetchone()
