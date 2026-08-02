@@ -83,6 +83,36 @@ def _find_or_copy_food(
     return new_id
 
 
+def _migrate_users(source: sqlite3.Connection, target: sqlite3.Connection) -> int:
+    """Copy accounts across, preserving ids so diary and food FKs stay valid.
+
+    The target is freshly built and already carries a seeded default account, so
+    ids collide on the way in. Replacing by id keeps the source as the authority
+    without breaking the rows that point at it.
+    """
+    if "users" not in _table_names(source) or "users" not in _table_names(target):
+        return 0
+
+    common = tuple(
+        column for column in _columns(source, "users") if column in _columns(target, "users")
+    )
+    count = 0
+    for row in source.execute("SELECT * FROM users ORDER BY id"):
+        values = dict(row)
+        placeholders = ", ".join("?" for _ in common)
+        target.execute(
+            f"INSERT OR REPLACE INTO users ({', '.join(common)}) VALUES ({placeholders})",
+            [values[column] for column in common],
+        )
+        count += 1
+    return count
+
+
+def _table_names(conn: sqlite3.Connection) -> frozenset[str]:
+    rows = conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+    return frozenset(row[0] for row in rows)
+
+
 def migrate_personal_data(source_path: Path, target_path: Path) -> dict[str, int]:
     source = _connect_readonly(source_path)
     target = sqlite3.connect(target_path)
@@ -102,6 +132,8 @@ def migrate_personal_data(source_path: Path, target_path: Path) -> dict[str, int
         )
         food_id_map: dict[int, int] = {}
 
+        user_count = _migrate_users(source, target)
+
         for food in source.execute("SELECT id FROM foods WHERE source = 'custom' ORDER BY id"):
             _find_or_copy_food(
                 source, target, food["id"], common_food_columns, food_id_map
@@ -112,7 +144,7 @@ def migrate_personal_data(source_path: Path, target_path: Path) -> dict[str, int
                 source, target, entry["food_id"], common_food_columns, food_id_map
             )
 
-        copied: dict[str, int] = {}
+        copied: dict[str, int] = {"users": user_count}
         for table in PERSONAL_TABLES:
             source_columns = _columns(source, table)
             target_columns = _columns(target, table)
