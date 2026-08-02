@@ -30,7 +30,6 @@ SOURCE_TIER_WEIGHT = 2.0
 # window well past the requested page before reordering it.
 CANDIDATE_POOL = 100
 MAX_CANDIDATE_POOL = 1000
-
 # Sources that publish measured composition data rather than transcribed
 # nutrition labels.
 REFERENCE_TIER_MAX = 3
@@ -70,12 +69,14 @@ def _quality_rank(food: dict) -> tuple[int, int, int]:
     )
 
 
-def _relevance_rank(food: dict) -> tuple[float, int]:
+def _relevance_rank(food: dict) -> tuple[float, int, int]:
     """Overall sort key — text relevance adjusted by source quality.
 
     bm25 is negative and lower is better, so adding a per-tier penalty demotes
     weaker sources. Foods that still tie fall back to the more complete
-    nutrient profile.
+    nutrient profile, and finally to the food id: without a total order,
+    SQLite is free to return tied rows in a different sequence as the
+    candidate window grows, which would shuffle foods between pages.
     """
     relevance = food.get(RELEVANCE_KEY)
     if relevance is None:
@@ -83,6 +84,7 @@ def _relevance_rank(food: dict) -> tuple[float, int]:
     return (
         relevance + SOURCE_TIER_WEIGHT * _ranking_tier(food),
         -_known_nutrients(food),
+        food.get("id") or 0,
     )
 
 
@@ -101,17 +103,33 @@ class FoodSearchService:
         # Retrieve a window by text relevance, then reorder it by relevance and
         # source quality together. Paging is applied last, after dedup, so a
         # page is not silently short when duplicates collapse.
-        pool = min(MAX_CANDIDATE_POOL, max(CANDIDATE_POOL, (offset + limit) * 3))
+        #
+        # The window has to cover the whole page being asked for: a fixed
+        # ceiling made deep pages unreachable, so `offset=1000` returned
+        # nothing while thousands of foods still matched. Dedup can also
+        # collapse the window below the requested page, so it grows until the
+        # page is covered or the matches run out.
         sources = resolve_source_filter(source)
-        candidates = self.repo.search(
-            query, sources=sources, user_id=user_id, limit=pool, offset=0
-        )
-        candidates += self._reference_candidates(
-            query, sources=sources, user_id=user_id, limit=pool
-        )
-        by_id = {food["id"]: food for food in candidates}
-        ranked = sorted(by_id.values(), key=_relevance_rank)
-        page = self._deduplicate(ranked)[offset : offset + limit]
+        wanted = offset + limit
+        ceiling = max(MAX_CANDIDATE_POOL, wanted * 4)
+        pool = max(CANDIDATE_POOL, min(ceiling, wanted * 3))
+
+        while True:
+            candidates = self.repo.search(
+                query, sources=sources, user_id=user_id, limit=pool, offset=0
+            )
+            exhausted = len(candidates) < pool
+            candidates += self._reference_candidates(
+                query, sources=sources, user_id=user_id, limit=pool
+            )
+            by_id = {food["id"]: food for food in candidates}
+            ranked = sorted(by_id.values(), key=_relevance_rank)
+            deduplicated = self._deduplicate(ranked)
+            if len(deduplicated) >= wanted or exhausted or pool >= ceiling:
+                break
+            pool = min(ceiling, pool * 2)
+
+        page = deduplicated[offset : offset + limit]
         for food in page:
             food.pop(RELEVANCE_KEY, None)
         return page

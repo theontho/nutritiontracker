@@ -138,6 +138,8 @@ def test_bulk_upsert_preserves_referenced_food_id(repo, db):
         "&&&",
         "",
         "   ",
+        "test\x00test",      # fts5: unterminated string — NUL truncates the literal
+        "\x00",
     ],
 )
 def test_search_never_raises_on_punctuation(db, query):
