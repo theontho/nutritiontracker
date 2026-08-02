@@ -1,3 +1,23 @@
+def test_root_identifies_service(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "<title>Nutrition Tracker Service</title>" in r.text
+    assert 'href="/favicon.svg"' in r.text
+    assert 'href="/docs"' in r.text
+    assert "Give your assistant the" in r.text
+    assert "link to this page." in r.text
+    assert "https://github.com/gregmushen/nutritiontracker" in r.text
+    assert client.head("/").status_code == 200
+
+
+def test_favicon(client):
+    r = client.get("/favicon.svg")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/svg+xml"
+    assert "<svg" in r.text
+    assert client.head("/favicon.svg").status_code == 200
+
+
 def test_health(client):
     r = client.get("/health")
     assert r.status_code == 200
