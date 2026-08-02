@@ -11,6 +11,7 @@ from app.database import get_connection, init_schema
 from app.repositories.foods import FoodRepository
 from app.routes.activity import router as activity_router
 from app.routes.diary import router as diary_router
+from app.routes.events import router as events_router
 from app.routes.foods import router as foods_router
 from app.routes.imports import router as imports_router
 from app.routes.journal import router as journal_router
@@ -67,6 +68,7 @@ app.include_router(weight_router, dependencies=_auth)
 app.include_router(recipes_router, dependencies=_auth)
 app.include_router(kitchen_router, dependencies=_auth)
 app.include_router(activity_router, dependencies=_auth)
+app.include_router(events_router, dependencies=_auth)
 app.include_router(imports_router, dependencies=_auth)
 app.include_router(
     users_router, dependencies=[Depends(require_auth), Depends(require_multi_user)]
