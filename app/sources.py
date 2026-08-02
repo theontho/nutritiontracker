@@ -76,6 +76,20 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         ),
     ),
     FoodSource(
+        code="cofid",
+        label="McCance and Widdowson's The Composition of Foods Integrated Dataset (CoFID)",
+        publisher="Public Health England / Institute of Food Research",
+        tier=2,
+        license="Open Government Licence v3.0 (Crown copyright)",
+        url="https://www.gov.uk/government/publications/composition-of-foods-integrated-dataset-cofid",
+        citation=(
+            "Public Health England. McCance and Widdowson's The Composition of "
+            "Foods Integrated Dataset (2021). Contains public sector information "
+            "licensed under the Open Government Licence v3.0."
+        ),
+        dataset_version="CoFID 2021",
+    ),
+    FoodSource(
         code="usda_sr_legacy",
         label="USDA National Nutrient Database for Standard Reference (SR Legacy)",
         publisher="U.S. Department of Agriculture, Agricultural Research Service",
@@ -137,6 +151,7 @@ SourceType = Literal[
     "recipe",
     "usda_fndds",
     "usda_foundation",
+    "cofid",
     "usda_sr_legacy",
     "food_data_central",
     "usda_branded",

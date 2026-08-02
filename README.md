@@ -132,7 +132,7 @@ and a quality `tier` used to rank duplicates during search (lower is better):
 | --- | --- | --- |
 | 0 | `custom`, `recipe` | Your own deliberate entries — always win |
 | 1 | `usda_fndds` | Gap-filled: USDA imputes missing values by documented procedures, so profiles are essentially complete |
-| 2 | `usda_foundation` | Lab-analysed, authoritative but sparse |
+| 2 | `usda_foundation`, `cofid` | Lab-analysed, authoritative but sparse |
 | 3 | `usda_sr_legacy`, `food_data_central` | Compiled reference data, no longer maintained |
 | 4 | `usda_branded`, `open_food_facts` | Nutrition-label data — only what the manufacturer prints |
 
@@ -140,13 +140,29 @@ and a quality `tier` used to rank duplicates during search (lower is better):
 dataset. `food_data_central` is kept as an alias matching all USDA datasets so
 pre-split clients keep working.
 
-Registering a new source (CoFID, CNF, Frida, ...) means adding an entry to
+Registering a new source (CNF, Frida, ...) means adding an entry to
 `app/sources.py` and a normalizer in `app/providers/` — `foods.source` is a
 foreign key onto the registry, so no schema migration is needed.
 
 Attribution note: Open Food Facts data is licensed under the
 [ODbL](https://opendatacommons.org/licenses/odbl/1-0/) and requires attribution;
 the citation text is in `GET /foods/sources`.
+
+### CoFID (UK)
+
+McCance and Widdowson's Composition of Foods Integrated Dataset — 2,887 UK foods
+from Public Health England, under the Open Government Licence v3.0. Download
+[the 2021 workbook](https://www.gov.uk/government/publications/composition-of-foods-integrated-dataset-cofid)
+and import it:
+
+```bash
+pip install -e ".[data-import]"    # needs openpyxl
+python -m scripts.import_cofid ~/Downloads/cofid_2021.xlsx
+```
+
+CoFID distinguishes "not measured" (`N`) from "trace" (`Tr`), which map to `null`
+and `0` respectively. Alcoholic drinks are published per 100 ml, so those foods
+are stored with `base_unit = "ml"`.
 
 ### `null` vs `0`
 
