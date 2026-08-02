@@ -163,8 +163,14 @@ class FoodRepository:
         all raised `fts5: syntax error` and failed the request, "Yoghurt-Greek"
         raised `no such column: greek`, and a bare `AND` was read as an
         operator.
+
+        NUL is stripped rather than quoted: SQLite's FTS5 parser is written
+        against NUL-terminated C strings, so an embedded NUL truncates the
+        expression mid-literal and the unclosed quote raises
+        `fts5: unterminated string`.
         """
-        terms = [term.replace('"', '""') for term in query.strip().split()]
+        cleaned = query.replace("\x00", "")
+        terms = [term.replace('"', '""') for term in cleaned.strip().split()]
         return " ".join(f'"{term}"*' for term in terms)
 
     def search(
