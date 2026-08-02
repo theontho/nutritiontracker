@@ -49,8 +49,12 @@ def parquet_row_to_off_product(row: dict) -> dict:
         name = nutrient.get("name")
         if not name:
             continue
+        # Only `100g` is carried over. The dump's `unit` column describes the
+        # contributor-entered `value`/`serving` fields, not `100g`, which OFF
+        # always normalizes to grams (kcal for energy). Forwarding it as
+        # `<name>_unit` would make the normalizer rescale an already-normalized
+        # figure — e.g. salt `value=1785 unit=mg` alongside `100g=12.7` grams.
         nutriments[f"{name}_100g"] = nutrient.get("100g")
-        nutriments[f"{name}_unit"] = nutrient.get("unit")
 
     return {
         "code": row.get("code") or "",

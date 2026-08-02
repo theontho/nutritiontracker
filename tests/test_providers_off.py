@@ -1,3 +1,5 @@
+import pytest
+
 from app.providers.open_food_facts import normalize_off_food
 
 
@@ -66,3 +68,29 @@ def test_normalize_handles_missing_fields():
     }
     food = normalize_off_food(raw)
     assert food["calories_kcal"] == 0
+
+
+def test_normalize_falls_back_to_the_unit_off_stores():
+    """Without an explicit `_unit`, per-100g figures are read as OFF stores them.
+
+    OFF normalizes every nutrient to grams (energy to kcal), so a bare
+    `calcium_100g` is grams and has to be scaled up to milligrams.
+    """
+    food = normalize_off_food(
+        {
+            "code": "000",
+            "product_name": "Bare",
+            "nutriments": {
+                "energy-kcal_100g": 539,
+                "calcium_100g": 0.0140845,
+                "vitamin-d_100g": 0.0000025,
+                "salt_unit": None,
+                "sodium_100g": 0.041,
+                "sodium_unit": "",
+            },
+        }
+    )
+    assert food["calories_kcal"] == 539
+    assert food["calcium_mg"] == pytest.approx(14.0845)
+    assert food["vitamin_d_ug"] == pytest.approx(2.5)
+    assert food["sodium_mg"] == pytest.approx(41)
