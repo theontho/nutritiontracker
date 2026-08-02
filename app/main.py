@@ -17,6 +17,7 @@ from app.routes.journal import router as journal_router
 from app.routes.kitchen import router as kitchen_router
 from app.routes.recipes import router as recipes_router
 from app.routes.stats import router as stats_router
+from app.routes.users import router as users_router
 from app.routes.weight import router as weight_router
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -67,6 +68,7 @@ app.include_router(recipes_router, dependencies=_auth)
 app.include_router(kitchen_router, dependencies=_auth)
 app.include_router(activity_router, dependencies=_auth)
 app.include_router(imports_router, dependencies=_auth)
+app.include_router(users_router, dependencies=_auth)
 
 
 @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)

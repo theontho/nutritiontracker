@@ -4,7 +4,7 @@ from app.repositories.foods import FoodRepository
 def _seed_food(db, name="Banana", **kwargs):
     repo = FoodRepository(db)
     repo.ensure_fts()
-    return repo.create(source="custom", name=name, **kwargs)
+    return repo.create(source="custom", name=name, owner_user_id=1, **kwargs)
 
 
 def test_search_foods(client, db):
