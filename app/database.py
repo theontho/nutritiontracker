@@ -23,7 +23,6 @@ def init_schema(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
-        INSERT OR IGNORE INTO users (id, name) VALUES (1, 'Default user');
 
         CREATE TABLE IF NOT EXISTS foods (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -250,3 +249,19 @@ def init_schema(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_step_obs_user_date ON step_observations(user_id, local_date);
         CREATE INDEX IF NOT EXISTS idx_daily_activity_user_date ON daily_activity(user_id, date);
     """)
+    seed_default_user(conn)
+
+
+def seed_default_user(conn: sqlite3.Connection) -> None:
+    """Ensure the user every unowned row is attributed to actually exists.
+
+    Owned rows carry ``owner_user_id = settings.default_user_id``, and that
+    column has a foreign key onto ``users``. Seeding a hardcoded id 1 while the
+    deployment is configured for a different one leaves the configured user
+    missing, so every write fails the constraint.
+    """
+    conn.execute(
+        "INSERT OR IGNORE INTO users (id, name) VALUES (?, 'Default user')",
+        (settings.default_user_id,),
+    )
+    conn.commit()
