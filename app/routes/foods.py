@@ -98,6 +98,8 @@ def get_by_barcode(request: Request, barcode: str):
     if not _has_nutrients(food) and food.get("source") == "open_food_facts":
         fresh = fetch_off_by_barcode(barcode)
         if fresh:
+            # `is not None`, not truthiness: a label declaring 0 g is a
+            # measured zero and has to overwrite the stored NULL.
             updates = {
                 key: fresh[key]
                 for key in (*NUTRIENT_FIELDS, *OFF_REFRESH_FIELDS)

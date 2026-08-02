@@ -95,6 +95,34 @@ def test_barcode_refresh_persists_product_metadata(client, db, monkeypatch):
     assert response.json()["product_quantity"] == 355
 
 
+def test_barcode_refresh_stores_a_measured_zero(client, db, monkeypatch):
+    """A refreshed label declaring 0 must overwrite NULL, not be filtered out.
+
+    NULL means "not reported" and 0 means "measured as zero", so a truthiness
+    filter on the refresh would leave the column unknown forever.
+    """
+    _seed_food(db, "Diet soda", barcode="555", source_code="555")
+    db.execute("UPDATE foods SET source = 'open_food_facts' WHERE barcode = '555'")
+    db.commit()
+
+    monkeypatch.setattr(
+        "app.routes.foods.fetch_off_by_barcode",
+        lambda barcode: {
+            "source": "open_food_facts",
+            "source_code": barcode,
+            "name": "Diet soda",
+            "barcode": barcode,
+            "calories_kcal": 0,
+            "sugar_g": 0,
+        },
+    )
+
+    body = client.get("/foods/barcode/555").json()
+
+    assert body["calories_kcal"] == 0
+    assert body["sugar_g"] == 0
+
+
 def test_create_custom_food(client, db):
     FoodRepository(db).ensure_fts()
     r = client.post("/foods", json={"name": "My Food", "source": "custom",
