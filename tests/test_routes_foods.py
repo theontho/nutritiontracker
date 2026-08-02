@@ -39,6 +39,25 @@ def test_barcode_404(client):
     assert r.status_code == 404
 
 
+def test_barcode_lookup_caches_global_open_food_facts_result(client, monkeypatch):
+    monkeypatch.setattr(
+        "app.routes.foods.fetch_off_by_barcode",
+        lambda barcode: {
+            "source": "open_food_facts",
+            "source_code": barcode,
+            "name": "Imported product",
+            "barcode": barcode,
+            "caffeine_mg": 56.3,
+        },
+    )
+
+    r = client.get("/foods/barcode/0889392000863")
+
+    assert r.status_code == 200
+    assert r.json()["caffeine_mg"] == 56.3
+    assert client.get("/foods/barcode/0889392000863").json()["id"] == r.json()["id"]
+
+
 def test_create_custom_food(client, db):
     FoodRepository(db).ensure_fts()
     r = client.post("/foods", json={"name": "My Food", "source": "custom",
