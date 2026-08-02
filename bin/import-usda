@@ -4,7 +4,7 @@
 # Usage:
 #   bin/import-usda <path-to-usda-json> [--csv-dir=<path-to-foundation-csv-dir>] [--source=<code>]
 #
-# The file must be on the garageband host (e.g. /home/gregmushen/nutrition-data/).
+# The file must already be on the deployment host (see deploy/deploy.env).
 # The script detects the current running container image automatically.
 #
 # Download datasets from: https://fdc.nal.usda.gov/download-datasets
@@ -37,9 +37,8 @@ for arg in "$@"; do
       ;;
   esac
 done
-HOST="192.168.60.55"
-SSH_KEY="${SSH_KEY:-$HOME/.ssh/stupidclaw_garageband_ed25519}"
-SSH="ssh -i $SSH_KEY -o StrictHostKeyChecking=no gregmushen@$HOST"
+source "$(dirname "${BASH_SOURCE[0]}")/_deploy-env"
+SSH="ssh ${SSH_OPTS[*]} $TARGET"
 
 IMAGE=$($SSH "docker inspect \$(docker ps --filter name=nutritiontracker-web --format '{{.Names}}' | head -1) --format '{{.Config.Image}}'")
 

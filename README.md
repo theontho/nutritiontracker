@@ -63,6 +63,32 @@ user. USDA and Open Food Facts catalog foods remain shared.
 - [Printing Press API-to-Agent Workflow](docs/superpowers/specs/2026-05-25-printing-press-api-to-agent-workflow-design.md)
 - [Companion Hermes skill draft](docs/hermes/skills/printing-press-api-to-agent-workflow/SKILL.md)
 
+## Deployment
+
+The tracker runs as a systemd service from a git checkout on a small Linux host
+(a Raspberry Pi), behind a Cloudflare tunnel.
+
+Deployment targets are not committed. Copy the template and fill in your host:
+
+```bash
+cp deploy/deploy.env.example deploy/deploy.env
+```
+
+`deploy/deploy.env` is gitignored, and every `bin/` script reads it, so host
+names, SSH users and key paths stay out of the repository.
+
+```bash
+bin/deploy                      # fetch, migrate and restart the service
+bin/db-backup --pull /tmp/live.db   # consistent online backup of the live DB
+bin/db-push data/nutrition.db   # replace the food catalog, keeping diary data
+```
+
+`bin/db-push` is the safe way to ship a rebuilt catalog: a rebuilt database
+contains no diary, weight or recipe records, so the script backs up the live
+database, merges the personal tables into the incoming file with
+`scripts/migrate_personal_data.py`, and only then swaps it in. The previous
+database is kept alongside the new one.
+
 ## Local development
 
 ```bash
@@ -80,9 +106,9 @@ Download **Survey (FNDDS)**, **SR Legacy** and/or **Foundation Foods** JSON from
 https://fdc.nal.usda.gov/download-datasets, copy to garageband, then:
 
 ```bash
-bin/import-usda /home/gregmushen/nutrition-data/FoodData_Central_survey_food_json_2021-2023.json
-bin/import-usda /home/gregmushen/nutrition-data/FoodData_Central_sr_legacy_food_json_2021-10-28.json
-bin/import-usda /home/gregmushen/nutrition-data/foundationDownload.json
+bin/import-usda /srv/nutrition-data/FoodData_Central_survey_food_json_2021-2023.json
+bin/import-usda /srv/nutrition-data/FoodData_Central_sr_legacy_food_json_2021-10-28.json
+bin/import-usda /srv/nutrition-data/foundationDownload.json
 ```
 
 The importer detects the dataset from the export and tags each food with its
@@ -99,8 +125,8 @@ directory as a fallback. Records omitted or invalid in the JSON export are
 reconstructed from `food.csv`, `foundation_food.csv`, and `food_nutrient.csv`:
 
 ```bash
-bin/import-usda /home/gregmushen/nutrition-data/foundationDownload.json \
-  --csv-dir=/home/gregmushen/nutrition-data/foundation-food-csv
+bin/import-usda /srv/nutrition-data/foundationDownload.json \
+  --csv-dir=/srv/nutrition-data/foundation-food-csv
 ```
 
 ### OpenFoodFacts (US products)
@@ -108,15 +134,15 @@ bin/import-usda /home/gregmushen/nutrition-data/foundationDownload.json \
 Download the full compressed JSONL (~12 GB) once:
 
 ```bash
-ssh gregmushen@192.168.60.55 \
-  "wget -q -O /home/gregmushen/nutrition-data/openfoodfacts-products.jsonl.gz \
+ssh "$NT_DEPLOY_USER@$NT_DEPLOY_HOST" \
+  "wget -q -O /srv/nutrition-data/openfoodfacts-products.jsonl.gz \
    'https://openfoodfacts-ds.s3.eu-west-3.amazonaws.com/openfoodfacts-products.jsonl.gz'"
 ```
 
 Then import US products only (streams through the gzip — no decompression to disk needed):
 
 ```bash
-bin/import-off /home/gregmushen/nutrition-data/openfoodfacts-products.jsonl.gz \
+bin/import-off /srv/nutrition-data/openfoodfacts-products.jsonl.gz \
   --country=en:united-states
 ```
 
