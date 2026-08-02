@@ -54,7 +54,7 @@ user. USDA and Open Food Facts catalog foods remain shared.
 ## Stack
 
 - Python 3.12, FastAPI, SQLite (WAL mode)
-- Deployed via Kamal 2 to a local server, exposed through a Cloudflare tunnel
+- Deploys as a systemd service on a small host, or via Kamal 2 to a container host
 - CI: Woodpecker (lint → secret-scan → test → deploy)
 
 ## Docs
@@ -65,8 +65,15 @@ user. USDA and Open Food Facts catalog foods remain shared.
 
 ## Deployment
 
-The tracker runs as a systemd service from a git checkout on a small Linux host
-(a Raspberry Pi), behind a Cloudflare tunnel.
+Two supported targets. They share `deploy/deploy.env`, so a host can move
+between them without a second config file.
+
+| | **systemd** | **Kamal** |
+| --- | --- | --- |
+| Runs | git checkout + virtualenv | container image |
+| Needs | Python 3.12+, systemd, git | Docker, a registry, a build host |
+| Suits | Raspberry Pi, small VPS, anything memory-constrained | multi-host or container-native setups |
+| Install | `bin/install-systemd` | `kamal deploy` |
 
 Deployment targets are not committed. Copy the template and fill in your host:
 
@@ -78,10 +85,42 @@ cp deploy/deploy.env.example deploy/deploy.env
 names, SSH users and key paths stay out of the repository. The example ships
 with placeholders — replace them with your own host before deploying.
 
+### Small hosts (systemd)
+
+The low-resource path: no container runtime, no registry, no build step. A
+Raspberry Pi 4 runs the full 947k-food catalog comfortably this way.
+
 ```bash
-bin/deploy                      # fetch, migrate and restart the service
+bin/install-systemd             # provision the host, then start the service
+```
+
+The installer is idempotent and safe to re-run. It clones the checkout, creates
+the virtualenv, generates `/etc/nutritiontracker/nutritiontracker.env` with a
+fresh bearer token on first run only, applies migrations, then renders and
+enables the unit. Re-running never rotates an existing token.
+
+The unit is generated from
+[`deploy/systemd/nutritiontracker.service.template`](deploy/systemd/nutritiontracker.service.template),
+which ships with resource guards sized for a 2–4 GB board (`MemoryMax=768M`,
+`TasksMax=64`) and systemd sandboxing (`ProtectSystem=strict`,
+`NoNewPrivileges`, a `@system-service` syscall filter), with the database
+directory granted back through `ReadWritePaths`. Override any of it from
+`deploy/deploy.env` — see the commented block in the example.
+
+The service binds `127.0.0.1` by default, so it is not reachable off the host
+until you put a tunnel or reverse proxy in front of it. To reach it directly
+for testing:
+
+```bash
+ssh -L 8000:127.0.0.1:8000 <user>@<host>
+```
+
+Day-to-day operation:
+
+```bash
+bin/deploy                          # fetch, migrate and restart the service
 bin/db-backup --pull /tmp/live.db   # consistent online backup of the live DB
-bin/db-push data/nutrition.db   # replace the food catalog, keeping diary data
+bin/db-push data/nutrition.db       # replace the food catalog, keeping diary data
 ```
 
 `bin/db-push` is the safe way to ship a rebuilt catalog: a rebuilt database
@@ -89,6 +128,11 @@ contains no diary, weight or recipe records, so the script backs up the live
 database, merges the personal tables into the incoming file with
 `scripts/migrate_personal_data.py`, and only then swaps it in. The previous
 database is kept alongside the new one.
+
+### Container hosts (Kamal)
+
+`kamal deploy` reads `config/deploy.yml`, which takes its target from the same
+`deploy/deploy.env` values. Ignore the systemd-only variables on these hosts.
 
 ### Continuous deployment
 
