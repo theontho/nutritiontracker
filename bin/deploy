@@ -9,9 +9,9 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/_deploy-env"
 
-require_vars NT_DEPLOY_DIR NT_DEPLOY_SERVICE NT_DEPLOY_DB
+require_vars NUTRITION_TRACKER_DEPLOY_DIR NUTRITION_TRACKER_DEPLOY_SERVICE NUTRITION_TRACKER_DEPLOY_DB
 
-REF="${NT_DEPLOY_BRANCH:-main}"
+REF="${NUTRITION_TRACKER_DEPLOY_BRANCH:-main}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --ref) REF="$2"; shift 2 ;;
@@ -19,19 +19,19 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "Deploying $REF to $NT_DEPLOY_HOST:$NT_DEPLOY_DIR"
+echo "Deploying $REF to $NUTRITION_TRACKER_DEPLOY_HOST:$NUTRITION_TRACKER_DEPLOY_DIR"
 
 remote "set -euo pipefail
-cd '$NT_DEPLOY_DIR'
+cd '$NUTRITION_TRACKER_DEPLOY_DIR'
 git fetch --all --prune
 git checkout '$REF'
 git pull --ff-only
 .venv/bin/pip install -q -e . 2>&1 | tail -2 || true
-NT_DB_PATH='$NT_DEPLOY_DB' .venv/bin/alembic upgrade head
-sudo systemctl restart '$NT_DEPLOY_SERVICE'
+NT_DB_PATH='$NUTRITION_TRACKER_DEPLOY_DB' .venv/bin/alembic upgrade head
+sudo systemctl restart '$NUTRITION_TRACKER_DEPLOY_SERVICE'
 sleep 3
-systemctl is-active '$NT_DEPLOY_SERVICE'"
+systemctl is-active '$NUTRITION_TRACKER_DEPLOY_SERVICE'"
 
 echo "Checking health"
-remote "curl -fsS http://127.0.0.1:${NT_APP_PORT:-8000}/health" && echo
+remote "curl -fsS http://127.0.0.1:${NUTRITION_TRACKER_APP_PORT:-8000}/health" && echo
 echo "Deployed."

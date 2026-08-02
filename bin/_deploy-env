@@ -6,7 +6,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ENV_FILE="${NT_DEPLOY_ENV:-$REPO_ROOT/deploy/deploy.env}"
+ENV_FILE="${NUTRITION_TRACKER_DEPLOY_ENV:-$REPO_ROOT/deploy/deploy.env}"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Missing $ENV_FILE" >&2
@@ -29,14 +29,14 @@ require_vars() {
   done
 }
 
-require_vars NT_DEPLOY_HOST NT_DEPLOY_USER
+require_vars NUTRITION_TRACKER_DEPLOY_HOST NUTRITION_TRACKER_DEPLOY_USER
 
 SSH_OPTS=()
-if [[ -n "${NT_DEPLOY_SSH_KEY:-}" ]]; then
-  SSH_OPTS+=(-i "${NT_DEPLOY_SSH_KEY/#\~/$HOME}")
+if [[ -n "${NUTRITION_TRACKER_DEPLOY_SSH_KEY:-}" ]]; then
+  SSH_OPTS+=(-i "${NUTRITION_TRACKER_DEPLOY_SSH_KEY/#\~/$HOME}")
 fi
 
-TARGET="$NT_DEPLOY_USER@$NT_DEPLOY_HOST"
+TARGET="$NUTRITION_TRACKER_DEPLOY_USER@$NUTRITION_TRACKER_DEPLOY_HOST"
 SSH=(ssh "${SSH_OPTS[@]}" "$TARGET")
 RSYNC_SSH="ssh ${SSH_OPTS[*]}"
 
