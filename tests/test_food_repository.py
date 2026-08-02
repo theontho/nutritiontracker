@@ -119,3 +119,52 @@ def test_bulk_upsert_preserves_referenced_food_id(repo, db):
 
     assert upserted_id == food_id
     assert repo.get(food_id)["name"] == "Updated Name"
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "ben & jerry",       # fts5: syntax error near "&"
+        "ac/dc energy",      # fts5: syntax error near "/"
+        "milk 2%",           # fts5: syntax error near "%"
+        "salt (fine)",       # fts5: syntax error near "("
+        "yoghurt-greek",     # no such column: greek
+        "cola AND milk",     # AND parsed as an operator
+        "cheese: aged",      # no such column: cheese
+        "*",                 # unknown special query
+        'say "hi"',
+        "^caret",
+        "a NEAR b",
+        "&&&",
+        "",
+        "   ",
+    ],
+)
+def test_search_never_raises_on_punctuation(db, query):
+    """Users type punctuation; it must not become FTS5 syntax."""
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+    assert isinstance(repo.search(query), list)
+
+
+def test_punctuated_names_are_findable(db):
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+    repo.create(source="open_food_facts", name="Ben & Jerry's Chocolate Fudge")
+    repo.create(source="open_food_facts", name="Milk 2% Fat")
+    assert repo.search("ben & jerry")[0]["name"].startswith("Ben & Jerry")
+    assert repo.search("milk 2%")[0]["name"] == "Milk 2% Fat"
+
+
+def test_prefix_matching_still_works(db):
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+    repo.create(source="open_food_facts", name="Chicken Breast")
+    assert repo.search("chick brea")[0]["name"] == "Chicken Breast"
+
+
+def test_blank_query_returns_nothing(db):
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+    repo.create(source="open_food_facts", name="Chicken Breast")
+    assert repo.search("   ") == []

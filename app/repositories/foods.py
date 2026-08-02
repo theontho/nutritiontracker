@@ -115,6 +115,20 @@ class FoodRepository:
         row = self.conn.execute(query, values).fetchone()
         return self._deserialize(row)
 
+    @staticmethod
+    def build_fts_query(query: str) -> str:
+        """Turn user input into an FTS5 prefix query, or "" if it has no terms.
+
+        Each term is wrapped in an FTS5 string literal so that punctuation a
+        user can reasonably type is matched literally instead of being parsed
+        as query syntax. Unquoted, "Ben & Jerry's" and "AC/DC" and "Milk 2%"
+        all raised `fts5: syntax error` and failed the request, "Yoghurt-Greek"
+        raised `no such column: greek`, and a bare `AND` was read as an
+        operator.
+        """
+        terms = [term.replace('"', '""') for term in query.strip().split()]
+        return " ".join(f'"{term}"*' for term in terms)
+
     def search(
         self, query: str, *, sources: Sequence[str] | None = None,
         user_id: int | None = None, limit: int = 20, offset: int = 0,
@@ -125,7 +139,10 @@ class FoodRepository:
         quality re-rank the rows using the `relevance` score, which is why it
         is returned rather than discarded.
         """
-        fts_query = " ".join(f"{term}*" for term in query.strip().split())
+        fts_query = self.build_fts_query(query)
+        if not fts_query:
+            # An empty MATCH is itself a syntax error.
+            return []
         filters = ""
         filter_values: list[object] = []
         if sources:
