@@ -45,4 +45,4 @@ remote "docker run --rm \
   -m scripts.import_off \
   /nutrition-data/\$(basename '$HOST_FILE') \
   /data/nutrition.db \
-  $(printf '%s ' "${EXTRA_ARGS[@]}")"
+  $(printf '%s ' ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"})"
