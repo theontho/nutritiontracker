@@ -9,6 +9,8 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/_deploy-env"
 
+require_vars NT_DEPLOY_DIR NT_DEPLOY_SERVICE NT_DEPLOY_DB
+
 PULL_TO=""
 while [[ $# -gt 0 ]]; do
   case "$1" in

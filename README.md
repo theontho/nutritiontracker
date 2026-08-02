@@ -75,7 +75,9 @@ cp deploy/deploy.env.example deploy/deploy.env
 ```
 
 `deploy/deploy.env` is gitignored, and every `bin/` script reads it, so host
-names, SSH users and key paths stay out of the repository.
+names, SSH users and key paths stay out of the repository. The example is
+pre-filled with the values that used to be hardcoded, so an existing host works
+from a straight copy.
 
 ```bash
 bin/deploy                      # fetch, migrate and restart the service
@@ -88,6 +90,19 @@ contains no diary, weight or recipe records, so the script backs up the live
 database, merges the personal tables into the incoming file with
 `scripts/migrate_personal_data.py`, and only then swaps it in. The previous
 database is kept alongside the new one.
+
+### Continuous deployment
+
+`config/deploy.yml` reads its target from the environment too, so the CI
+pipeline needs these Woodpecker secrets alongside the existing
+`deploy_ssh_key`, `NT_BEARER_TOKEN`, `CLOUDFLARE_TUNNEL_TOKEN` and
+`KAMAL_REGISTRY_PASSWORD`:
+
+| Secret | Was hardcoded as |
+| --- | --- |
+| `NT_DEPLOY_HOST` | the `servers:` and registry host |
+| `NT_DEPLOY_USER` | the `ssh: user:` |
+| `NT_PUBLIC_HOST` | the `proxy: host:` |
 
 ## Local development
 
@@ -106,9 +121,9 @@ Download **Survey (FNDDS)**, **SR Legacy** and/or **Foundation Foods** JSON from
 https://fdc.nal.usda.gov/download-datasets, copy to garageband, then:
 
 ```bash
-bin/import-usda /srv/nutrition-data/FoodData_Central_survey_food_json_2021-2023.json
-bin/import-usda /srv/nutrition-data/FoodData_Central_sr_legacy_food_json_2021-10-28.json
-bin/import-usda /srv/nutrition-data/foundationDownload.json
+bin/import-usda $NT_DATA_DIR/FoodData_Central_survey_food_json_2021-2023.json
+bin/import-usda $NT_DATA_DIR/FoodData_Central_sr_legacy_food_json_2021-10-28.json
+bin/import-usda $NT_DATA_DIR/foundationDownload.json
 ```
 
 The importer detects the dataset from the export and tags each food with its
@@ -125,8 +140,8 @@ directory as a fallback. Records omitted or invalid in the JSON export are
 reconstructed from `food.csv`, `foundation_food.csv`, and `food_nutrient.csv`:
 
 ```bash
-bin/import-usda /srv/nutrition-data/foundationDownload.json \
-  --csv-dir=/srv/nutrition-data/foundation-food-csv
+bin/import-usda $NT_DATA_DIR/foundationDownload.json \
+  --csv-dir=$NT_DATA_DIR/foundation-food-csv
 ```
 
 ### OpenFoodFacts (US products)
@@ -135,14 +150,14 @@ Download the full compressed JSONL (~12 GB) once:
 
 ```bash
 ssh "$NT_DEPLOY_USER@$NT_DEPLOY_HOST" \
-  "wget -q -O /srv/nutrition-data/openfoodfacts-products.jsonl.gz \
+  "wget -q -O $NT_DATA_DIR/openfoodfacts-products.jsonl.gz \
    'https://openfoodfacts-ds.s3.eu-west-3.amazonaws.com/openfoodfacts-products.jsonl.gz'"
 ```
 
 Then import US products only (streams through the gzip — no decompression to disk needed):
 
 ```bash
-bin/import-off /srv/nutrition-data/openfoodfacts-products.jsonl.gz \
+bin/import-off $NT_DATA_DIR/openfoodfacts-products.jsonl.gz \
   --country=en:united-states
 ```
 
