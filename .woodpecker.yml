@@ -2,7 +2,7 @@ steps:
   lint:
     image: python:3.12-slim
     commands:
-      - pip install ruff
+      - pip install ruff==0.15.12
       - ruff check app/ tests/ scripts/
     when:
       event: [push, pull_request, manual, tag]
