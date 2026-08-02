@@ -143,24 +143,9 @@ pipeline needs these Woodpecker secrets alongside the existing
 
 | Secret | Used for |
 | --- | --- |
-| `NUTRITION_TRACKER_DEPLOY_HOST` | the `servers:` and registry host |
-| `NUTRITION_TRACKER_DEPLOY_USER` | the `ssh: user:` |
-| `NUTRITION_TRACKER_PUBLIC_HOST` | the `proxy: host:` |
-
-### Environment variable naming
-
-Two prefixes, and the split is deliberate:
-
-- **`NT_…`** configures the running application. These map onto the
-  `Settings` class in `app/config.py`, which declares `env_prefix = "NT_"`,
-  so the names are fixed by pydantic: `NT_DB_PATH`, `NT_BEARER_TOKEN`,
-  `NT_MULTI_USER_ENABLED`. The CLI helpers add `NT_BASE_URL` and `NT_TOKEN`.
-- **`NUTRITION_TRACKER_…`** configures deployment and tooling. These are
-  read only by the `bin/` scripts, `config/deploy.yml` and CI — never by the
-  application.
-
-If you deployed before this rename, update `deploy/deploy.env` and your
-Woodpecker secret names; the old `NT_DEPLOY_*` spellings are no longer read.
+| `NT_DEPLOY_HOST` | the `servers:` and registry host |
+| `NT_DEPLOY_USER` | the `ssh: user:` |
+| `NT_PUBLIC_HOST` | the `proxy: host:` |
 
 ## Local development
 
@@ -179,9 +164,9 @@ Download **Survey (FNDDS)**, **SR Legacy** and/or **Foundation Foods** JSON from
 https://fdc.nal.usda.gov/download-datasets, copy to garageband, then:
 
 ```bash
-bin/import-usda $NUTRITION_TRACKER_DATA_DIR/FoodData_Central_survey_food_json_2021-2023.json
-bin/import-usda $NUTRITION_TRACKER_DATA_DIR/FoodData_Central_sr_legacy_food_json_2021-10-28.json
-bin/import-usda $NUTRITION_TRACKER_DATA_DIR/foundationDownload.json
+bin/import-usda $NT_DATA_DIR/FoodData_Central_survey_food_json_2021-2023.json
+bin/import-usda $NT_DATA_DIR/FoodData_Central_sr_legacy_food_json_2021-10-28.json
+bin/import-usda $NT_DATA_DIR/foundationDownload.json
 ```
 
 The importer detects the dataset from the export and tags each food with its
@@ -198,8 +183,8 @@ directory as a fallback. Records omitted or invalid in the JSON export are
 reconstructed from `food.csv`, `foundation_food.csv`, and `food_nutrient.csv`:
 
 ```bash
-bin/import-usda $NUTRITION_TRACKER_DATA_DIR/foundationDownload.json \
-  --csv-dir=$NUTRITION_TRACKER_DATA_DIR/foundation-food-csv
+bin/import-usda $NT_DATA_DIR/foundationDownload.json \
+  --csv-dir=$NT_DATA_DIR/foundation-food-csv
 ```
 
 ### OpenFoodFacts (US products)
@@ -207,15 +192,15 @@ bin/import-usda $NUTRITION_TRACKER_DATA_DIR/foundationDownload.json \
 Download the full compressed JSONL (~12 GB) once:
 
 ```bash
-ssh "$NUTRITION_TRACKER_DEPLOY_USER@$NUTRITION_TRACKER_DEPLOY_HOST" \
-  "wget -q -O $NUTRITION_TRACKER_DATA_DIR/openfoodfacts-products.jsonl.gz \
+ssh "$NT_DEPLOY_USER@$NT_DEPLOY_HOST" \
+  "wget -q -O $NT_DATA_DIR/openfoodfacts-products.jsonl.gz \
    'https://openfoodfacts-ds.s3.eu-west-3.amazonaws.com/openfoodfacts-products.jsonl.gz'"
 ```
 
 Then import US products only (streams through the gzip — no decompression to disk needed):
 
 ```bash
-bin/import-off $NUTRITION_TRACKER_DATA_DIR/openfoodfacts-products.jsonl.gz \
+bin/import-off $NT_DATA_DIR/openfoodfacts-products.jsonl.gz \
   --country=en:united-states
 ```
 

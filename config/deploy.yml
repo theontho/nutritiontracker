@@ -6,10 +6,10 @@ image: nutritiontracker
 # from pipeline secrets. See deploy/deploy.env.example.
 servers:
   web:
-    - <%= ENV.fetch("NUTRITION_TRACKER_DEPLOY_HOST") %>
+    - <%= ENV.fetch("NT_DEPLOY_HOST") %>
 
 registry:
-  server: <%= ENV.fetch("NUTRITION_TRACKER_REGISTRY_HOST", ENV.fetch("NUTRITION_TRACKER_DEPLOY_HOST")) %>:5000
+  server: <%= ENV.fetch("NT_REGISTRY_HOST", ENV.fetch("NT_DEPLOY_HOST")) %>:5000
   username: kamal
   password:
     - KAMAL_REGISTRY_PASSWORD
@@ -24,7 +24,7 @@ volumes:
   - nutritiontracker_data:/data
 
 proxy:
-  host: <%= ENV.fetch("NUTRITION_TRACKER_PUBLIC_HOST") %>
+  host: <%= ENV.fetch("NT_PUBLIC_HOST") %>
   app_port: 8000
   healthcheck:
     path: /health
@@ -32,18 +32,18 @@ proxy:
     timeout: 10
 
 builder:
-  arch: <%= ENV.fetch("NUTRITION_TRACKER_DEPLOY_ARCH", "amd64") %>
+  arch: <%= ENV.fetch("NT_DEPLOY_ARCH", "amd64") %>
   driver: docker
 
 ssh:
-  user: <%= ENV.fetch("NUTRITION_TRACKER_DEPLOY_USER") %>
+  user: <%= ENV.fetch("NT_DEPLOY_USER") %>
   keys:
-    - <%= ENV.fetch("NUTRITION_TRACKER_DEPLOY_SSH_KEY", "~/.ssh/id_rsa") %>
+    - <%= ENV.fetch("NT_DEPLOY_SSH_KEY", "~/.ssh/id_rsa") %>
 
 accessories:
   cloudflared:
     image: cloudflare/cloudflared:latest
-    host: <%= ENV.fetch("NUTRITION_TRACKER_DEPLOY_HOST") %>
+    host: <%= ENV.fetch("NT_DEPLOY_HOST") %>
     cmd: tunnel --no-autoupdate run
     env:
       secret:

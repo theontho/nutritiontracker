@@ -13,42 +13,42 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/_deploy-env"
 
-require_vars NUTRITION_TRACKER_DEPLOY_DIR NUTRITION_TRACKER_DEPLOY_SERVICE NUTRITION_TRACKER_DEPLOY_DB
+require_vars NT_DEPLOY_DIR NT_DEPLOY_SERVICE NT_DEPLOY_DB
 
 if [[ $# -gt 0 ]]; then
   echo "Unknown option: $1" >&2
   exit 1
 fi
 
-REPO_URL="${NUTRITION_TRACKER_REPO_URL:-https://github.com/gregmushen/nutritiontracker.git}"
-BRANCH="${NUTRITION_TRACKER_DEPLOY_BRANCH:-main}"
-GROUP="${NUTRITION_TRACKER_DEPLOY_GROUP:-$NUTRITION_TRACKER_DEPLOY_USER}"
-BIND_HOST="${NUTRITION_TRACKER_BIND_HOST:-127.0.0.1}"
-PORT="${NUTRITION_TRACKER_APP_PORT:-8000}"
-ENV_FILE="${NUTRITION_TRACKER_DEPLOY_ENV_FILE:-/etc/nutritiontracker/nutritiontracker.env}"
-MEMORY_HIGH="${NUTRITION_TRACKER_MEMORY_HIGH:-512M}"
-MEMORY_MAX="${NUTRITION_TRACKER_MEMORY_MAX:-768M}"
-TASKS_MAX="${NUTRITION_TRACKER_TASKS_MAX:-64}"
-CPU_WEIGHT="${NUTRITION_TRACKER_CPU_WEIGHT:-100}"
-DATA_DIR="$(dirname "$NUTRITION_TRACKER_DEPLOY_DB")"
+REPO_URL="${NT_REPO_URL:-https://github.com/gregmushen/nutritiontracker.git}"
+BRANCH="${NT_DEPLOY_BRANCH:-main}"
+GROUP="${NT_DEPLOY_GROUP:-$NT_DEPLOY_USER}"
+BIND_HOST="${NT_BIND_HOST:-127.0.0.1}"
+PORT="${NT_APP_PORT:-8000}"
+ENV_FILE="${NT_DEPLOY_ENV_FILE:-/etc/nutritiontracker/nutritiontracker.env}"
+MEMORY_HIGH="${NT_MEMORY_HIGH:-512M}"
+MEMORY_MAX="${NT_MEMORY_MAX:-768M}"
+TASKS_MAX="${NT_TASKS_MAX:-64}"
+CPU_WEIGHT="${NT_CPU_WEIGHT:-100}"
+DATA_DIR="$(dirname "$NT_DEPLOY_DB")"
 
 TEMPLATE="$REPO_ROOT/deploy/systemd/nutritiontracker.service.template"
 [[ -f "$TEMPLATE" ]] || { echo "Missing $TEMPLATE" >&2; exit 1; }
 
-echo "Installing $NUTRITION_TRACKER_DEPLOY_SERVICE on $NUTRITION_TRACKER_DEPLOY_HOST"
-echo "  checkout : $NUTRITION_TRACKER_DEPLOY_DIR ($BRANCH)"
-echo "  database : $NUTRITION_TRACKER_DEPLOY_DB"
+echo "Installing $NT_DEPLOY_SERVICE on $NT_DEPLOY_HOST"
+echo "  checkout : $NT_DEPLOY_DIR ($BRANCH)"
+echo "  database : $NT_DEPLOY_DB"
 echo "  listen   : $BIND_HOST:$PORT"
 echo "  memory   : high $MEMORY_HIGH / max $MEMORY_MAX"
 
 UNIT="$(sed \
-  -e "s|__USER__|$NUTRITION_TRACKER_DEPLOY_USER|g" \
+  -e "s|__USER__|$NT_DEPLOY_USER|g" \
   -e "s|__GROUP__|$GROUP|g" \
-  -e "s|__DIR__|$NUTRITION_TRACKER_DEPLOY_DIR|g" \
+  -e "s|__DIR__|$NT_DEPLOY_DIR|g" \
   -e "s|__ENV_FILE__|$ENV_FILE|g" \
   -e "s|__BIND_HOST__|$BIND_HOST|g" \
   -e "s|__PORT__|$PORT|g" \
-  -e "s|__SERVICE__|$NUTRITION_TRACKER_DEPLOY_SERVICE|g" \
+  -e "s|__SERVICE__|$NT_DEPLOY_SERVICE|g" \
   -e "s|__DATA_DIR__|$DATA_DIR|g" \
   -e "s|__MEMORY_HIGH__|$MEMORY_HIGH|g" \
   -e "s|__MEMORY_MAX__|$MEMORY_MAX|g" \
@@ -63,25 +63,25 @@ if grep -q '__[A-Z_]*__' <<<"$UNIT"; then
   exit 1
 fi
 
-printf '%s\n' "$UNIT" | remote "cat > /tmp/$NUTRITION_TRACKER_DEPLOY_SERVICE.service"
+printf '%s\n' "$UNIT" | remote "cat > /tmp/$NT_DEPLOY_SERVICE.service"
 
 remote "set -euo pipefail
 
 # 1. Checkout.
-if [[ ! -d '$NUTRITION_TRACKER_DEPLOY_DIR/.git' ]]; then
+if [[ ! -d '$NT_DEPLOY_DIR/.git' ]]; then
   echo 'Cloning $REPO_URL'
-  git clone --branch '$BRANCH' '$REPO_URL' '$NUTRITION_TRACKER_DEPLOY_DIR'
+  git clone --branch '$BRANCH' '$REPO_URL' '$NT_DEPLOY_DIR'
 fi
-cd '$NUTRITION_TRACKER_DEPLOY_DIR'
+cd '$NT_DEPLOY_DIR'
 mkdir -p '$DATA_DIR'
 
 # 2. Virtualenv. Created only once; refreshed on every run.
-if [[ ! -x '$NUTRITION_TRACKER_DEPLOY_DIR/.venv/bin/python' ]]; then
+if [[ ! -x '$NT_DEPLOY_DIR/.venv/bin/python' ]]; then
   echo 'Creating virtualenv'
-  python3 -m venv '$NUTRITION_TRACKER_DEPLOY_DIR/.venv'
+  python3 -m venv '$NT_DEPLOY_DIR/.venv'
 fi
-'$NUTRITION_TRACKER_DEPLOY_DIR/.venv/bin/pip' install -q --upgrade pip
-'$NUTRITION_TRACKER_DEPLOY_DIR/.venv/bin/pip' install -q -e .
+'$NT_DEPLOY_DIR/.venv/bin/pip' install -q --upgrade pip
+'$NT_DEPLOY_DIR/.venv/bin/pip' install -q -e .
 
 # 3. Environment file. Preserved if it already exists so the token is stable.
 #    The check runs under sudo because the directory is usually root-only, and
@@ -91,26 +91,26 @@ if sudo test -f '$ENV_FILE'; then
   echo 'Keeping existing $ENV_FILE'
 else
   echo 'Generating $ENV_FILE with a fresh bearer token'
-  TOKEN=\$('$NUTRITION_TRACKER_DEPLOY_DIR/.venv/bin/python' -c 'import secrets; print(secrets.token_urlsafe(32))')
+  TOKEN=\$('$NT_DEPLOY_DIR/.venv/bin/python' -c 'import secrets; print(secrets.token_urlsafe(32))')
   printf 'NT_DB_PATH=%s\nNT_BEARER_TOKEN=%s\nNT_MULTI_USER_ENABLED=%s\n' \
-    '$NUTRITION_TRACKER_DEPLOY_DB' \"\$TOKEN\" '${NT_MULTI_USER_ENABLED:-true}' \
+    '$NT_DEPLOY_DB' \"\$TOKEN\" '${NT_MULTI_USER_ENABLED:-true}' \
     | sudo tee '$ENV_FILE' >/dev/null
 fi
 sudo chown root:'$GROUP' '$ENV_FILE'
 sudo chmod 640 '$ENV_FILE'
 
 # 4. Schema.
-NT_DB_PATH='$NUTRITION_TRACKER_DEPLOY_DB' '$NUTRITION_TRACKER_DEPLOY_DIR/.venv/bin/alembic' upgrade head
+NT_DB_PATH='$NT_DEPLOY_DB' '$NT_DEPLOY_DIR/.venv/bin/alembic' upgrade head
 
 # 5. Unit.
-sudo install -o root -g root -m 644 /tmp/$NUTRITION_TRACKER_DEPLOY_SERVICE.service \
-  /etc/systemd/system/$NUTRITION_TRACKER_DEPLOY_SERVICE.service
-rm -f /tmp/$NUTRITION_TRACKER_DEPLOY_SERVICE.service
+sudo install -o root -g root -m 644 /tmp/$NT_DEPLOY_SERVICE.service \
+  /etc/systemd/system/$NT_DEPLOY_SERVICE.service
+rm -f /tmp/$NT_DEPLOY_SERVICE.service
 sudo systemctl daemon-reload
-sudo systemctl enable '$NUTRITION_TRACKER_DEPLOY_SERVICE'
-sudo systemctl restart '$NUTRITION_TRACKER_DEPLOY_SERVICE'
+sudo systemctl enable '$NT_DEPLOY_SERVICE'
+sudo systemctl restart '$NT_DEPLOY_SERVICE'
 sleep 3
-systemctl is-active '$NUTRITION_TRACKER_DEPLOY_SERVICE'"
+systemctl is-active '$NT_DEPLOY_SERVICE'"
 
 echo "Checking health"
 remote "curl -fsS http://127.0.0.1:$PORT/health" && echo
