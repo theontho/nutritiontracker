@@ -132,7 +132,7 @@ and a quality `tier` used to rank duplicates during search (lower is better):
 | --- | --- | --- |
 | 0 | `custom`, `recipe` | Your own deliberate entries — always win |
 | 1 | `usda_fndds` | Gap-filled: USDA imputes missing values by documented procedures, so profiles are essentially complete |
-| 2 | `usda_foundation`, `cofid`, `cnf` | Lab-analysed, authoritative but sparse |
+| 2 | `usda_foundation`, `cofid`, `cnf`, `frida`, `afcd` | Lab-analysed, authoritative but sparse |
 | 3 | `usda_sr_legacy`, `food_data_central` | Compiled reference data, no longer maintained |
 | 4 | `usda_branded`, `open_food_facts` | Nutrition-label data — only what the manufacturer prints |
 
@@ -179,6 +179,36 @@ CNF stores one row per measurement, so a nutrient a food was never assayed for
 has no row and is imported as `null`. It does not measure iodine, chromium, or
 added sugar at all. Imports verify each nutrient's published unit and fail
 rather than silently rescaling if a future release changes one.
+
+### Frida (Denmark)
+
+The Danish Food Composition Database — 1,390 foods from DTU's National Food
+Institute, under CC BY 4.0. Download `FCDB_<version>_Dataset.xlsx` from
+[the DTU dataset record](https://doi.org/10.11583/DTU.32312844):
+
+```bash
+python -m scripts.import_frida ~/Downloads/FCDB_6.1_Dataset.xlsx
+```
+
+Frida has the widest nutrient coverage of the non-USDA sources here, including
+choline, chromium, iodine, and vitamin K. It reports no folic acid.
+
+### AFCD (Australia)
+
+The Australian Food Composition Database — 1,588 foods from Food Standards
+Australia New Zealand, under CC BY 4.0. Download "AFCD Release 3 - Nutrient
+profiles.xlsx" from
+[the FSANZ database page](https://www.foodstandards.gov.au/science-data/food-nutrient-databases):
+
+```bash
+python -m scripts.import_afcd ~/Downloads/afcd-release-3-nutrient-profiles.xlsx
+```
+
+AFCD publishes energy in kilojoules (converted on import) and fatty acid totals
+both as a share of total fat and as grams — only the gram columns are read.
+Its trans fat column is in milligrams while the rest are grams, so that one is
+scaled. It reports no vitamin K or choline. Only the per-100 g sheet is
+imported; the per-100 mL sheet re-states 213 foods that are already on it.
 
 ### `null` vs `0`
 

@@ -103,6 +103,33 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         dataset_version="CNF 2026",
     ),
     FoodSource(
+        code="frida",
+        label="Frida — Danish Food Composition Database",
+        publisher="National Food Institute, Technical University of Denmark",
+        tier=2,
+        license="CC BY 4.0",
+        url="https://frida.fooddata.dk/",
+        citation=(
+            "Frida, The Danish Food Composition Database, version 6.1, "
+            "National Food Institute, Technical University of Denmark. "
+            "https://doi.org/10.11583/DTU.32312844"
+        ),
+        dataset_version="Frida 6.1",
+    ),
+    FoodSource(
+        code="afcd",
+        label="Australian Food Composition Database (AFCD)",
+        publisher="Food Standards Australia New Zealand",
+        tier=2,
+        license="CC BY 4.0",
+        url="https://www.foodstandards.gov.au/science-data/food-nutrient-databases",
+        citation=(
+            "Food Standards Australia New Zealand. Australian Food Composition "
+            "Database — Release 3. Licensed under CC BY 4.0."
+        ),
+        dataset_version="AFCD Release 3",
+    ),
+    FoodSource(
         code="usda_sr_legacy",
         label="USDA National Nutrient Database for Standard Reference (SR Legacy)",
         publisher="U.S. Department of Agriculture, Agricultural Research Service",
@@ -166,6 +193,8 @@ SourceType = Literal[
     "usda_foundation",
     "cofid",
     "cnf",
+    "frida",
+    "afcd",
     "usda_sr_legacy",
     "food_data_central",
     "usda_branded",
