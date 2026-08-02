@@ -26,7 +26,7 @@ All endpoints (except `/health`) require `Authorization: Bearer <token>`.
 
 ## Users
 
-The configured `NT_BEARER_TOKEN` is the admin and existing default-user token.
+The configured `NT_BEARER_TOKEN` is the admin and default **Mac user** token.
 Use it to create a separate bearer token for each additional user:
 
 ```bash
