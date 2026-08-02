@@ -90,6 +90,19 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         dataset_version="CoFID 2021",
     ),
     FoodSource(
+        code="cnf",
+        label="Canadian Nutrient File (CNF)",
+        publisher="Health Canada",
+        tier=2,
+        license="Open Government Licence - Canada",
+        url="https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/nutrient-data/canadian-nutrient-file-about-us.html",
+        citation=(
+            "Health Canada. Canadian Nutrient File, 2026. Contains information "
+            "licensed under the Open Government Licence - Canada."
+        ),
+        dataset_version="CNF 2026",
+    ),
+    FoodSource(
         code="usda_sr_legacy",
         label="USDA National Nutrient Database for Standard Reference (SR Legacy)",
         publisher="U.S. Department of Agriculture, Agricultural Research Service",
@@ -152,6 +165,7 @@ SourceType = Literal[
     "usda_fndds",
     "usda_foundation",
     "cofid",
+    "cnf",
     "usda_sr_legacy",
     "food_data_central",
     "usda_branded",
