@@ -169,6 +169,87 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         ),
     ),
     FoodSource(
+        code="cronometer_custom",
+        label="Cronometer custom food",
+        publisher="User (via personal Cronometer export)",
+        tier=0,
+        license="Private to the owning user",
+        url="",
+    ),
+    FoodSource(
+        code="nccdb",
+        label="Nutrition Coordinating Center Food and Nutrient Database (NCCDB)",
+        publisher="University of Minnesota Nutrition Coordinating Center",
+        tier=1,
+        license=(
+            "Proprietary — licensed to Cronometer. Personal export only: "
+            "not redistributable and must not be republished or served publicly."
+        ),
+        url="https://www.ncc.umn.edu/food-and-nutrient-database/",
+        citation=(
+            "Nutrition Coordinating Center. NCC Food and Nutrient Database, "
+            "University of Minnesota. Retrieved via a personal Cronometer export."
+        ),
+    ),
+    FoodSource(
+        code="nuttab",
+        label="NUTTAB (Australian Food Composition Tables)",
+        publisher="Food Standards Australia New Zealand",
+        tier=2,
+        license="Creative Commons Attribution 3.0 Australia",
+        url="https://www.foodstandards.gov.au/science-data/food-composition-databases",
+        citation=(
+            "Food Standards Australia New Zealand. NUTTAB. Retrieved via a "
+            "personal Cronometer export."
+        ),
+    ),
+    FoodSource(
+        code="crdb",
+        label="Cronometer Restaurant and Branded Foods Database (CRDB)",
+        publisher="Cronometer Software Inc.",
+        tier=4,
+        license=(
+            "Proprietary — Cronometer Software Inc. Personal export only: "
+            "not redistributable and must not be republished or served publicly."
+        ),
+        url="https://cronometer.com/",
+        citation=(
+            "Cronometer Software Inc. Restaurant and branded foods database. "
+            "Retrieved via a personal Cronometer export."
+        ),
+    ),
+    FoodSource(
+        code="nutritionix",
+        label="Nutritionix",
+        publisher="Nutritionix (Syndigo)",
+        tier=4,
+        license=(
+            "Proprietary — Nutritionix. Personal export only: not "
+            "redistributable and must not be republished or served publicly."
+        ),
+        url="https://www.nutritionix.com/",
+        citation=(
+            "Nutritionix branded food database. Retrieved via a personal "
+            "Cronometer export."
+        ),
+    ),
+    FoodSource(
+        code="cronometer",
+        label="Cronometer export",
+        publisher="Cronometer Software Inc.",
+        tier=4,
+        license=(
+            "Mixed upstream licences. Personal export only: not redistributable "
+            "and must not be republished or served publicly."
+        ),
+        url="https://cronometer.com/",
+        citation=(
+            "Personal Cronometer export. Covers foods Cronometer sourced from a "
+            "database this system also imports directly, kept separate so the "
+            "authoritative row from the full dataset is never overwritten."
+        ),
+    ),
+    FoodSource(
         code="open_food_facts",
         label="Open Food Facts",
         publisher="Open Food Facts contributors",
@@ -189,16 +270,22 @@ SOURCE_CODES: tuple[str, ...] = tuple(s.code for s in FOOD_SOURCES)
 SourceType = Literal[
     "custom",
     "recipe",
+    "cronometer_custom",
     "usda_fndds",
+    "nccdb",
     "usda_foundation",
     "cofid",
     "cnf",
     "frida",
     "afcd",
+    "nuttab",
     "usda_sr_legacy",
     "food_data_central",
     "usda_branded",
     "open_food_facts",
+    "crdb",
+    "nutritionix",
+    "cronometer",
 ]
 
 # Worse than any registered tier, so an unknown source always sorts last.
@@ -221,6 +308,16 @@ SOURCE_ALIASES: dict[str, tuple[str, ...]] = {
         "usda_sr_legacy",
         "usda_branded",
         "food_data_central",
+    ),
+    # Everything that reached us through a personal Cronometer export, whatever
+    # database Cronometer itself sourced it from.
+    "cronometer": (
+        "cronometer",
+        "cronometer_custom",
+        "nccdb",
+        "crdb",
+        "nutritionix",
+        "nuttab",
     ),
 }
 
