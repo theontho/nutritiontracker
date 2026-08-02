@@ -10,6 +10,8 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/_deploy-env"
 
+require_vars NT_DEPLOY_DIR NT_DEPLOY_SERVICE NT_DEPLOY_DB
+
 if [[ $# -ne 1 ]]; then
   echo "Usage: bin/db-push <local-db>" >&2
   exit 1
