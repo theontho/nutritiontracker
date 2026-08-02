@@ -132,7 +132,7 @@ and a quality `tier` used to rank duplicates during search (lower is better):
 | --- | --- | --- |
 | 0 | `custom`, `recipe` | Your own deliberate entries — always win |
 | 1 | `usda_fndds` | Gap-filled: USDA imputes missing values by documented procedures, so profiles are essentially complete |
-| 2 | `usda_foundation`, `cofid` | Lab-analysed, authoritative but sparse |
+| 2 | `usda_foundation`, `cofid`, `cnf` | Lab-analysed, authoritative but sparse |
 | 3 | `usda_sr_legacy`, `food_data_central` | Compiled reference data, no longer maintained |
 | 4 | `usda_branded`, `open_food_facts` | Nutrition-label data — only what the manufacturer prints |
 
@@ -163,6 +163,22 @@ python -m scripts.import_cofid ~/Downloads/cofid_2021.xlsx
 CoFID distinguishes "not measured" (`N`) from "trace" (`Tr`), which map to `null`
 and `0` respectively. Alcoholic drinks are published per 100 ml, so those foods
 are stored with `base_unit = "ml"`.
+
+### CNF (Canada)
+
+The Canadian Nutrient File — 5,993 foods from Health Canada, under the Open
+Government Licence - Canada. Download and unpack
+[the CSV bundle](https://open.canada.ca/data/en/dataset/1b6139bd-ed7e-4043-bc28-ff00e10f3109),
+then import the directory:
+
+```bash
+python -m scripts.import_cnf ~/Downloads/cnf-fcen-csv
+```
+
+CNF stores one row per measurement, so a nutrient a food was never assayed for
+has no row and is imported as `null`. It does not measure iodine, chromium, or
+added sugar at all. Imports verify each nutrient's published unit and fail
+rather than silently rescaling if a future release changes one.
 
 ### `null` vs `0`
 
