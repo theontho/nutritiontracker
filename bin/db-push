@@ -26,10 +26,10 @@ REMOTE_INCOMING="$BACKUP_DIR/nutrition-incoming-$STAMP.db"
 echo "==> Backing up the live database"
 remote "mkdir -p '$BACKUP_DIR' && cd '$NT_DEPLOY_DIR' && .venv/bin/python - <<'PY'
 import sqlite3
-src = sqlite3.connect("file:$NT_DEPLOY_DB?mode=ro", uri=True)
-dst = sqlite3.connect("$REMOTE_BACKUP")
+src = sqlite3.connect('file:$NT_DEPLOY_DB?mode=ro', uri=True)
+dst = sqlite3.connect('$REMOTE_BACKUP')
 src.backup(dst); dst.close(); src.close()
-print("backup written")
+print('backup written')
 PY"
 
 echo "==> Uploading $(du -h "$LOCAL_DB" | cut -f1) to $NT_DEPLOY_HOST"
