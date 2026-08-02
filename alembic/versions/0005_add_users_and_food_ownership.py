@@ -1,13 +1,13 @@
 """Add per-user identities and custom-food ownership.
 
-Revision ID: 0003
-Revises: 0002
+Revision ID: 0005
+Revises: 0004
 Create Date: 2026-08-01
 """
 from alembic import op
 
-revision = "0003"
-down_revision = "0002"
+revision = "0005"
+down_revision = "0004"
 branch_labels = None
 depends_on = None
 

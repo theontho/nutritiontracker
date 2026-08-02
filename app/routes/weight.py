@@ -55,8 +55,9 @@ def update_weight(request: Request, entry_id: int, body: WeightEntryUpdate):
 @router.delete("/{entry_id}", status_code=204, summary="Delete weight entry")
 def delete_weight(request: Request, entry_id: int):
     """Delete a weight entry."""
-    entry = _repo(request).get(entry_id)
+    repo = _repo(request)
+    entry = repo.get(entry_id)
     if not entry or entry["user_id"] != current_user_id(request):
         raise HTTPException(404, "Weight entry not found")
-    if not _repo(request).delete(entry_id):
+    if not repo.delete(entry_id):
         raise HTTPException(404, "Weight entry not found")
