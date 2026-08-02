@@ -233,6 +233,35 @@ def init_schema(conn: sqlite3.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_journal_user_date ON journal_entries(user_id, date);
 
+        CREATE TABLE IF NOT EXISTS event_types (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL DEFAULT 1,
+            name TEXT NOT NULL,
+            unit TEXT,
+            notes TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_event_types_user_name
+            ON event_types(user_id, name);
+
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL DEFAULT 1,
+            event_type_id INTEGER NOT NULL REFERENCES event_types(id),
+            date TEXT NOT NULL,
+            at TEXT,
+            value REAL,
+            unit TEXT,
+            notes TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_events_user_date ON events(user_id, date);
+        CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type_id);
+
         CREATE TABLE IF NOT EXISTS step_observations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL DEFAULT 1,

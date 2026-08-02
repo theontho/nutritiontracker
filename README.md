@@ -8,7 +8,7 @@ OpenAPI schema is served at `/openapi.json` on your own deployment.
 
 ## What it does
 
-REST API for logging food, weight, activity, and journal entries. Designed to be called by AI agents or mobile clients.
+REST API for logging food, weight, activity, events, and journal entries. Designed to be called by AI agents or mobile clients.
 
 Key endpoints:
 - `GET /foods/search?q=` — full-text search across USDA + OpenFoodFacts + custom foods
@@ -17,6 +17,7 @@ Key endpoints:
 - `POST /diary/{date}/entries` — log what you ate
 - `GET /stats/daily/{date}` — daily nutrition totals with meal breakdown
 - `POST /weight` — log body weight
+- `POST /events/types` — define your own event categories, then `POST /events` to log them
 - `POST /recipes` — build recipes with auto-computed nutrition math
 - `POST /imports/activity/steps` — import step count data
 - `POST /kitchen/inventory` — remember what you have, use soon, maybe have, are out of, or treat as a staple
@@ -24,6 +25,36 @@ Key endpoints:
 - `POST /kitchen/shopping-list/generate` — generate grocery items from selected favorite meals
 
 All endpoints (except `/health`) require `Authorization: Bearer <token>`.
+
+## Events
+
+A general log of things that happened, deliberately not fitness-specific and
+with nothing pre-seeded. You define the categories you care about, and each
+one carries whatever unit you measure it in:
+
+```bash
+curl -X POST http://127.0.0.1:8000/events/types \
+  -H "Authorization: Bearer $NT_BEARER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Red light therapy","unit":"minutes"}'
+
+curl -X POST http://127.0.0.1:8000/events \
+  -H "Authorization: Bearer $NT_BEARER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"event_type_id":1,"date":"2026-08-02","at":"19:30","value":5,"notes":"panel at 18 inches"}'
+```
+
+`value` is optional — some events are just "this happened" — and `0` is
+treated as a real measurement rather than a missing one. Each event stores the
+unit it was logged with, so editing a type's unit later does not silently
+reinterpret readings already recorded.
+
+`GET /events/summary?start=&end=` totals events per type. It groups by unit as
+well, so a type whose unit changed part-way through reports each unit on its
+own row instead of adding values that do not share a scale.
+
+Deleting a type that still has events is refused unless you pass
+`cascade=true`, so history is not discarded by accident.
 
 ## Users
 
@@ -48,7 +79,7 @@ curl -X POST http://127.0.0.1:8000/users \
 ```
 
 The response includes the new token once. Each user token scopes diary, recipes,
-weight, journal, activity, kitchen, shopping lists, and custom foods to that
+weight, journal, activity, events, kitchen, shopping lists, and custom foods to that
 user. USDA and Open Food Facts catalog foods remain shared.
 
 ## Stack
