@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.auth import current_user_id, require_admin
+from app.config import settings
 from app.models.user import User, UserCreate, UserWithToken
 from app.repositories.users import UserRepository
 
@@ -44,6 +45,14 @@ def create_user(request: Request, body: UserCreate):
     summary="Rotate user token",
 )
 def rotate_user_token(request: Request, user_id: int):
+    if user_id == settings.default_user_id:
+        # require_auth matches NT_BEARER_TOKEN before consulting token_hash, so a
+        # rotated default-user token would authenticate as a non-admin while the
+        # env var kept full access. Rotate the env var instead.
+        raise HTTPException(
+            status_code=409,
+            detail="The default user authenticates with NT_BEARER_TOKEN; rotate that instead",
+        )
     result = _repo(request).rotate_token(user_id)
     if result is None:
         raise HTTPException(status_code=404, detail="User not found")

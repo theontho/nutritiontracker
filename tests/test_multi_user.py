@@ -1,7 +1,10 @@
 import hashlib
 import secrets
 
-from app.config import settings
+import pytest
+from pydantic import ValidationError
+
+from app.config import Settings, settings
 from app.repositories.foods import FoodRepository
 
 
@@ -89,3 +92,40 @@ def test_single_user_mode_rejects_alternate_user_token(client, db, monkeypatch):
     )
 
     assert response.status_code == 401
+
+
+def test_multi_user_without_a_token_is_refused_at_startup():
+    """The combination would make every anonymous caller an admin."""
+    with pytest.raises(ValidationError, match="NT_MULTI_USER_ENABLED requires NT_BEARER_TOKEN"):
+        Settings(multi_user_enabled=True, bearer_token=None)
+
+
+def test_unauthenticated_deployment_grants_no_admin(client, monkeypatch):
+    monkeypatch.setattr(settings, "bearer_token", None)
+    monkeypatch.setattr(settings, "multi_user_enabled", True)
+
+    assert client.get("/users").status_code == 403
+    assert client.post("/users", json={"name": "Intruder"}).status_code == 403
+
+
+def test_default_user_token_cannot_be_rotated(client, monkeypatch):
+    monkeypatch.setattr(settings, "bearer_token", "admin-token")
+    monkeypatch.setattr(settings, "multi_user_enabled", True)
+
+    response = client.post(
+        f"/users/{settings.default_user_id}/token", headers=_admin_headers()
+    )
+
+    assert response.status_code == 409
+    assert "NT_BEARER_TOKEN" in response.json()["detail"]
+
+
+def test_other_user_tokens_can_still_be_rotated(client, monkeypatch):
+    monkeypatch.setattr(settings, "bearer_token", "admin-token")
+    monkeypatch.setattr(settings, "multi_user_enabled", True)
+    user = _create_user(client, "Rotatable")
+
+    response = client.post(f"/users/{user['id']}/token", headers=_admin_headers())
+
+    assert response.status_code == 200
+    assert response.json()["token"] != user["token"]
