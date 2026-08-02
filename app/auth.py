@@ -1,4 +1,5 @@
 import hashlib
+import secrets
 from typing import Annotated
 
 from fastapi import HTTPException, Request, Security
@@ -20,14 +21,18 @@ def require_auth(
 ) -> None:
     """Resolve the bearer token to a user identity."""
     if not settings.bearer_token:
+        # Nothing to authenticate against, so every caller is anonymous and none
+        # of them is an admin. Settings rejects this alongside multi-user mode.
         request.state.user_id = settings.default_user_id
-        request.state.is_admin = settings.multi_user_enabled
+        request.state.is_admin = False
         return
 
     if credentials is None:
         raise HTTPException(status_code=401, detail="Invalid or missing bearer token")
 
-    if credentials.credentials == settings.bearer_token:
+    if secrets.compare_digest(
+        credentials.credentials.encode(), settings.bearer_token.encode()
+    ):
         request.state.user_id = settings.default_user_id
         request.state.is_admin = settings.multi_user_enabled
         return

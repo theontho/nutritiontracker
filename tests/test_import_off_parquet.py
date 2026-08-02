@@ -1,7 +1,9 @@
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 
 from app.database import get_connection
+from app.providers.open_food_facts import normalize_off_food
 from scripts.import_off_parquet import import_off_parquet, parquet_row_to_off_product
 
 
@@ -23,14 +25,16 @@ def test_parquet_row_converts_nested_names_and_nutrients():
             "product_quantity_unit": "ml",
             "nutriments": [
                 {"name": "caffeine", "100g": 0.056338, "unit": "g"},
-                {"name": "vitamin-pp", "100g": 5.6338, "unit": "mg"},
+                {"name": "vitamin-pp", "100g": 0.0056338, "unit": "mg"},
             ],
         }
     )
 
     assert product["product_name"] == "Celsius Energy"
     assert product["nutriments"]["caffeine_100g"] == 0.056338
-    assert product["nutriments"]["vitamin-pp_unit"] == "mg"
+    # The dump's `unit` describes `value`/`serving`, not the normalized `100g`,
+    # so it must not be forwarded as an override.
+    assert "vitamin-pp_unit" not in product["nutriments"]
     assert product["allergens_tags"] == ["en:milk"]
     assert product["ingredients_text"] == "Water, caffeine"
 
@@ -70,7 +74,7 @@ def test_import_filters_country_and_normalizes_nutrients(tmp_path):
                 {
                     "name": "vitamin-pp",
                     "value": None,
-                    "100g": 5.6338,
+                    "100g": 0.0056338,
                     "serving": None,
                     "unit": "mg",
                     "prepared_value": None,
@@ -112,9 +116,31 @@ def test_import_filters_country_and_normalizes_nutrients(tmp_path):
            FROM foods ORDER BY id"""
     ).fetchall()
     conn.close()
-    assert [tuple(food) for food in foods] == [
-        (
-            "Celsius Energy", 56.338, 5.6338, "Water, caffeine", '["en:milk"]',
-            '["en:vegan"]', "c", 4, 355.0,
-        )
-    ]
+    assert len(foods) == 1
+    food = foods[0]
+    assert food["name"] == "Celsius Energy"
+    assert food["caffeine_mg"] == pytest.approx(56.338)
+    # 0.0056338 g stored per 100 g, despite the row's `unit` reading "mg".
+    assert food["niacin_mg"] == pytest.approx(5.6338)
+    assert (
+        food["ingredients_text"],
+        food["allergens_tags"],
+        food["dietary_tags"],
+        food["nutriscore_grade"],
+        food["nova_group"],
+        food["product_quantity"],
+    ) == ("Water, caffeine", '["en:milk"]', '["en:vegan"]', "c", 4, 355.0)
+
+
+def test_null_unit_does_not_abort_the_import():
+    """A null `unit` used to raise AttributeError and kill the whole run."""
+    product = parquet_row_to_off_product(
+        {
+            "code": "1",
+            "product_name": [{"lang": "en", "text": "X"}],
+            "nutriments": [{"name": "calcium", "100g": 0.012, "unit": None}],
+        }
+    )
+
+    food = normalize_off_food(product)
+    assert food["calcium_mg"] == pytest.approx(12.0)

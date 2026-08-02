@@ -92,8 +92,9 @@ def update_entry(request: Request, entry_id: int, body: DiaryEntryUpdate):
 @router.delete("/diary/entries/{entry_id}", status_code=204, summary="Delete a diary entry")
 def delete_entry(request: Request, entry_id: int):
     """Delete a diary entry by ID."""
-    entry = _diary_repo(request).get(entry_id)
+    diary_repo = _diary_repo(request)
+    entry = diary_repo.get(entry_id)
     if not entry or entry["user_id"] != current_user_id(request):
         raise HTTPException(404, "Entry not found")
-    if not _diary_repo(request).delete(entry_id):
+    if not diary_repo.delete(entry_id):
         raise HTTPException(404, "Entry not found")
