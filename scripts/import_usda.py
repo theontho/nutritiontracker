@@ -3,10 +3,17 @@ Bulk import USDA FoodData Central data into the nutrition tracker database.
 
 Usage:
     python -m scripts.import_usda <path_to_usda_json> [db_path] [--csv-dir=DIR]
+                                  [--source=CODE]
 
-Download the "FoodData Central Foundation Foods" or "SR Legacy" JSON and,
-optionally, the matching Foundation Foods CSV archive from:
+Download "Survey (FNDDS)", "Foundation Foods", "SR Legacy" or "Branded Foods"
+JSON and, optionally, the matching CSV archive from:
     https://fdc.nal.usda.gov/download-datasets
+
+The dataset is detected from the export's top-level key (``SurveyFoods``,
+``FoundationFoods``, ``SRLegacyFoods``, ``BrandedFoods``), falling back to each
+record's ``dataType``, so foods are tagged with the specific USDA dataset they
+came from rather than a generic FoodData Central label. Use --source to
+override.
 """
 
 import argparse
@@ -19,6 +26,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.database import get_connection, init_schema
 from app.providers.food_data_central import (
+    DATASET_KEY_SOURCES,
+    DEFAULT_USDA_SOURCE,
     NUTRIENT_MAP,
     NUTRIENT_PRIORITY,
     normalize_usda_food,
@@ -26,7 +35,19 @@ from app.providers.food_data_central import (
 from app.repositories.foods import FoodRepository
 
 
-def _load_csv_fallback(csv_dir: Path, imported_ids: set[str]) -> list[dict]:
+def _extract_foods(data) -> tuple[list, str | None]:
+    """Return the food records plus the source code implied by the export."""
+    if isinstance(data, list):
+        return data, None
+    for key, code in DATASET_KEY_SOURCES.items():
+        if key in data:
+            return data[key], code
+    return [], None
+
+
+def _load_csv_fallback(
+    csv_dir: Path, imported_ids: set[str], source: str
+) -> list[dict]:
     required_files = ("food.csv", "foundation_food.csv", "food_nutrient.csv")
     missing_files = [name for name in required_files if not (csv_dir / name).is_file()]
     if missing_files:
@@ -46,10 +67,11 @@ def _load_csv_fallback(csv_dir: Path, imported_ids: set[str]) -> list[dict]:
             fdc_id = row["fdc_id"]
             if fdc_id in fallback_ids:
                 foods[fdc_id] = {
-                    "source": "food_data_central",
+                    "source": source,
                     "source_code": fdc_id,
                     "name": row["description"],
-                    **{field: 0 for field in NUTRIENT_MAP.values()},
+                    # Unreported nutrients stay unknown rather than zero.
+                    **{field: None for field in NUTRIENT_MAP.values()},
                 }
 
     missing_foods = fallback_ids - foods.keys()
@@ -77,7 +99,12 @@ def _load_csv_fallback(csv_dir: Path, imported_ids: set[str]) -> list[dict]:
     return list(foods.values())
 
 
-def import_usda(file_path: str, db_path: str | None = None, csv_dir: str | None = None):
+def import_usda(
+    file_path: str,
+    db_path: str | None = None,
+    csv_dir: str | None = None,
+    source: str | None = None,
+):
     conn = get_connection(Path(db_path) if db_path else None)
     init_schema(conn)
     repo = FoodRepository(conn)
@@ -86,11 +113,8 @@ def import_usda(file_path: str, db_path: str | None = None, csv_dir: str | None 
     with open(file_path) as f:
         data = json.load(f)
 
-    foods = (
-        data
-        if isinstance(data, list)
-        else data.get("FoundationFoods", data.get("SRLegacyFoods", []))
-    )
+    foods, detected_source = _extract_foods(data)
+    dataset_source = source or detected_source
     count = 0
     skipped = 0
     imported_ids = set()
@@ -99,7 +123,7 @@ def import_usda(file_path: str, db_path: str | None = None, csv_dir: str | None 
         if not isinstance(raw, dict):
             skipped += 1
             continue
-        normalized = normalize_usda_food(raw)
+        normalized = normalize_usda_food(raw, source=dataset_source)
         repo.create_no_commit(**normalized)
         imported_ids.add(normalized["source_code"])
         count += 1
@@ -110,7 +134,10 @@ def import_usda(file_path: str, db_path: str | None = None, csv_dir: str | None 
 
     fallback_count = 0
     if csv_dir:
-        fallback_foods = _load_csv_fallback(Path(csv_dir), imported_ids)
+        fallback_source = dataset_source or DEFAULT_USDA_SOURCE
+        fallback_foods = _load_csv_fallback(
+            Path(csv_dir), imported_ids, fallback_source
+        )
         for food in fallback_foods:
             repo.create_no_commit(**food)
             fallback_count += 1
@@ -119,8 +146,9 @@ def import_usda(file_path: str, db_path: str | None = None, csv_dir: str | None 
                 print(f"  Imported {fallback_count} CSV fallback foods...")
         conn.commit()
 
+    label = dataset_source or "USDA"
     print(
-        f"Done. Imported {count} USDA foods from JSON "
+        f"Done. Imported {count} {label} foods from JSON "
         f"(skipped {skipped} invalid records); "
         f"added {fallback_count} CSV fallback foods."
     )
@@ -132,5 +160,9 @@ if __name__ == "__main__":
     parser.add_argument("json_path")
     parser.add_argument("db_path", nargs="?")
     parser.add_argument("--csv-dir")
+    parser.add_argument(
+        "--source",
+        help="Override the detected source code (e.g. usda_fndds, usda_foundation)",
+    )
     args = parser.parse_args()
-    import_usda(args.json_path, args.db_path, args.csv_dir)
+    import_usda(args.json_path, args.db_path, args.csv_dir, args.source)

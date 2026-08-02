@@ -101,7 +101,12 @@ def _parse_product_quantity(raw: dict) -> float | None:
 
 def _get_nutrient_value(
     nutriments: dict, source_keys: tuple[str, ...], default_unit: str, target_unit: str
-) -> float:
+) -> float | None:
+    """Return the converted per-100g value, or None when OFF does not report it.
+
+    None means "not known" so it stays distinguishable from a label that
+    genuinely declares zero.
+    """
     for source_key in source_keys:
         value = nutriments.get(f"{source_key}_100g")
         if value is None:
@@ -110,8 +115,8 @@ def _get_nutrient_value(
             source_unit = _normalized_unit(nutriments.get(f"{source_key}_unit"), default_unit)
             return _convert_unit(float(value), source_unit, target_unit)
         except (AttributeError, KeyError, TypeError, ValueError):
-            return 0
-    return 0
+            return None
+    return None
 
 
 def normalize_off_food(raw: dict) -> dict:
@@ -172,7 +177,7 @@ def fetch_off_by_barcode(barcode: str) -> dict | None:
 
     normalized = normalize_off_food(product)
     # Only return if we actually got nutrient data
-    if normalized.get("calories_kcal", 0) == 0 and normalized.get("protein_g", 0) == 0:
+    if not normalized.get("calories_kcal") and not normalized.get("protein_g"):
         return None
 
     return normalized

@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from collections.abc import Sequence
 
 from app.models.food import NUTRIENT_FIELDS
 
@@ -115,33 +116,27 @@ class FoodRepository:
         return self._deserialize(row)
 
     def search(
-        self, query: str, *, source: str | None = None, user_id: int | None = None,
-        limit: int = 20, offset: int = 0,
+        self, query: str, *, sources: Sequence[str] | None = None,
+        user_id: int | None = None, limit: int = 20, offset: int = 0,
     ) -> list[dict]:
         fts_query = " ".join(f"{term}*" for term in query.strip().split())
-        ownership_clause = ""
-        ownership_values: tuple[int, ...] = ()
+        filters = ""
+        filter_values: list[object] = []
+        if sources:
+            placeholders = ", ".join(["?"] * len(sources))
+            filters += f" AND f.source IN ({placeholders})"
+            filter_values.extend(sources)
         if user_id is not None:
-            ownership_clause = " AND (f.owner_user_id IS NULL OR f.owner_user_id = ?)"
-            ownership_values = (user_id,)
-        if source and source != "all":
-            rows = self.conn.execute(
-                """SELECT f.* FROM foods_fts fts
-                   JOIN foods f ON f.id = fts.rowid
-                   WHERE foods_fts MATCH ? AND f.source = ?""" + ownership_clause + """
-                   ORDER BY rank
-                   LIMIT ? OFFSET ?""",
-                (fts_query, source, *ownership_values, limit, offset),
-            ).fetchall()
-        else:
-            rows = self.conn.execute(
-                """SELECT f.* FROM foods_fts fts
-                   JOIN foods f ON f.id = fts.rowid
-                   WHERE foods_fts MATCH ?""" + ownership_clause + """
-                   ORDER BY rank
-                   LIMIT ? OFFSET ?""",
-                (fts_query, *ownership_values, limit, offset),
-            ).fetchall()
+            filters += " AND (f.owner_user_id IS NULL OR f.owner_user_id = ?)"
+            filter_values.append(user_id)
+        rows = self.conn.execute(
+            """SELECT f.* FROM foods_fts fts
+               JOIN foods f ON f.id = fts.rowid
+               WHERE foods_fts MATCH ?""" + filters + """
+               ORDER BY rank
+               LIMIT ? OFFSET ?""",
+            (fts_query, *filter_values, limit, offset),
+        ).fetchall()
         return [self._deserialize(r) for r in rows]
 
     def update(self, food_id: int, **kwargs) -> bool:
@@ -166,6 +161,17 @@ class FoodRepository:
         cur = self.conn.execute("DELETE FROM foods WHERE id = ?", (food_id,))
         self.conn.commit()
         return cur.rowcount > 0
+
+    def list_sources(self) -> list[dict]:
+        """Registered data sources with how many foods each contributes."""
+        rows = self.conn.execute("""
+            SELECT s.code, s.label, s.publisher, s.tier, s.license, s.url,
+                   s.citation, s.dataset_version,
+                   (SELECT COUNT(*) FROM foods f WHERE f.source = s.code) AS food_count
+            FROM food_sources s
+            ORDER BY s.tier, s.code
+        """).fetchall()
+        return [dict(r) for r in rows]
 
     @staticmethod
     def _deserialize(row: sqlite3.Row | None) -> dict | None:
