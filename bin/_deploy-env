@@ -37,7 +37,11 @@ if [[ -n "${NT_DEPLOY_SSH_KEY:-}" ]]; then
 fi
 
 TARGET="$NT_DEPLOY_USER@$NT_DEPLOY_HOST"
-SSH=(ssh "${SSH_OPTS[@]}" "$TARGET")
+# bash 3.2 -- still the /bin/bash on macOS -- treats "${arr[@]}" on an empty
+# array as an unbound variable under `set -u`, so expand it through the ${x+y}
+# guard. Without this, deploying from a Mac fails outright whenever the key
+# comes from ~/.ssh/config rather than NT_DEPLOY_SSH_KEY.
+SSH=(ssh ${SSH_OPTS[@]+"${SSH_OPTS[@]}"} "$TARGET")
 
 # rsync's -e takes a command *string* and splits it on whitespace, so it cannot
 # represent a key path containing a space however it is quoted. Reject that up
@@ -47,6 +51,6 @@ if [[ "${NT_DEPLOY_SSH_KEY:-}" =~ [[:space:]] ]]; then
   echo "rsync cannot pass such a path through to ssh. Move the key or symlink it." >&2
   exit 1
 fi
-RSYNC_SSH="ssh ${SSH_OPTS[*]}"
+RSYNC_SSH="ssh ${SSH_OPTS[*]+${SSH_OPTS[*]}}"
 
 remote() { "${SSH[@]}" "$@"; }
