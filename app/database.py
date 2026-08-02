@@ -23,7 +23,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
-        INSERT OR IGNORE INTO users (id, name) VALUES (1, 'Mac user');
+        INSERT OR IGNORE INTO users (id, name) VALUES (1, 'Default user');
 
         CREATE TABLE IF NOT EXISTS foods (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

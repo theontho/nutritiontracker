@@ -1,3 +1,6 @@
+import hashlib
+import secrets
+
 from app.config import settings
 from app.repositories.foods import FoodRepository
 
@@ -14,6 +17,7 @@ def _create_user(client, name: str) -> dict:
 
 def test_user_tokens_isolate_personal_data_and_custom_foods(client, db, monkeypatch):
     monkeypatch.setattr(settings, "bearer_token", "admin-token")
+    monkeypatch.setattr(settings, "multi_user_enabled", True)
     user = _create_user(client, "Second user")
     user_headers = {"Authorization": f"Bearer {user['token']}"}
 
@@ -49,6 +53,7 @@ def test_user_tokens_isolate_personal_data_and_custom_foods(client, db, monkeypa
 
 def test_only_admin_can_create_users(client, monkeypatch):
     monkeypatch.setattr(settings, "bearer_token", "admin-token")
+    monkeypatch.setattr(settings, "multi_user_enabled", True)
     user = _create_user(client, "Second user")
 
     response = client.post(
@@ -58,3 +63,29 @@ def test_only_admin_can_create_users(client, monkeypatch):
     )
 
     assert response.status_code == 403
+
+
+def test_multi_user_routes_are_disabled_by_default(client, monkeypatch):
+    monkeypatch.setattr(settings, "bearer_token", "admin-token")
+    monkeypatch.setattr(settings, "multi_user_enabled", False)
+
+    response = client.get("/users/me", headers=_admin_headers())
+
+    assert response.status_code == 404
+
+
+def test_single_user_mode_rejects_alternate_user_token(client, db, monkeypatch):
+    monkeypatch.setattr(settings, "bearer_token", "admin-token")
+    monkeypatch.setattr(settings, "multi_user_enabled", False)
+    token = secrets.token_urlsafe(32)
+    db.execute(
+        "INSERT INTO users (name, token_hash) VALUES (?, ?)",
+        ("Second user", hashlib.sha256(token.encode()).hexdigest()),
+    )
+    db.commit()
+
+    response = client.get(
+        "/diary/2026-08-01", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 401

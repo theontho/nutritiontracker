@@ -21,7 +21,7 @@ def require_auth(
     """Resolve the bearer token to a user identity."""
     if not settings.bearer_token:
         request.state.user_id = settings.default_user_id
-        request.state.is_admin = True
+        request.state.is_admin = settings.multi_user_enabled
         return
 
     if credentials is None:
@@ -29,8 +29,11 @@ def require_auth(
 
     if credentials.credentials == settings.bearer_token:
         request.state.user_id = settings.default_user_id
-        request.state.is_admin = True
+        request.state.is_admin = settings.multi_user_enabled
         return
+
+    if not settings.multi_user_enabled:
+        raise HTTPException(status_code=401, detail="Invalid or missing bearer token")
 
     user = request.app.state.db.execute(
         "SELECT id FROM users WHERE token_hash = ?",
@@ -50,3 +53,8 @@ def current_user_id(request: Request) -> int:
 def require_admin(request: Request) -> None:
     if not request.state.is_admin:
         raise HTTPException(status_code=403, detail="Admin access required")
+
+
+def require_multi_user() -> None:
+    if not settings.multi_user_enabled:
+        raise HTTPException(status_code=404, detail="Multi-user mode is disabled")

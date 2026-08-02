@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI
 from fastapi.responses import FileResponse
 from setproctitle import setproctitle
 
-from app.auth import require_auth
+from app.auth import require_auth, require_multi_user
 from app.config import settings
 from app.database import get_connection, init_schema
 from app.repositories.foods import FoodRepository
@@ -68,7 +68,9 @@ app.include_router(recipes_router, dependencies=_auth)
 app.include_router(kitchen_router, dependencies=_auth)
 app.include_router(activity_router, dependencies=_auth)
 app.include_router(imports_router, dependencies=_auth)
-app.include_router(users_router, dependencies=_auth)
+app.include_router(
+    users_router, dependencies=[Depends(require_auth), Depends(require_multi_user)]
+)
 
 
 @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
