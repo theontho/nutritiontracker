@@ -12,6 +12,7 @@ REST API for logging food, weight, activity, and journal entries. Designed to be
 
 Key endpoints:
 - `GET /foods/search?q=` — full-text search across USDA + OpenFoodFacts + custom foods
+- `GET /foods/sources` — data sources behind the catalog, with licence, citation and quality tier
 - `GET /foods/barcode/{barcode}` — barcode lookup; caches a matching live Open Food Facts product on a local miss
 - `POST /diary/{date}/entries` — log what you ate
 - `GET /stats/daily/{date}` — daily nutrition totals with meal breakdown
@@ -75,12 +76,23 @@ The app ships with no food data. Seed it from USDA and OpenFoodFacts.
 
 ### USDA FoodData Central
 
-Download **SR Legacy** and/or **Foundation Foods** JSON from https://fdc.nal.usda.gov/download-datasets, copy to garageband, then:
+Download **Survey (FNDDS)**, **SR Legacy** and/or **Foundation Foods** JSON from
+https://fdc.nal.usda.gov/download-datasets, copy to garageband, then:
 
 ```bash
+bin/import-usda /home/gregmushen/nutrition-data/FoodData_Central_survey_food_json_2021-2023.json
 bin/import-usda /home/gregmushen/nutrition-data/FoodData_Central_sr_legacy_food_json_2021-10-28.json
 bin/import-usda /home/gregmushen/nutrition-data/foundationDownload.json
 ```
+
+The importer detects the dataset from the export and tags each food with its
+specific source (`usda_fndds`, `usda_foundation`, `usda_sr_legacy`,
+`usda_branded`); pass `--source=<code>` to override.
+
+**Prefer FNDDS** for generic foods: USDA fills its gaps with documented
+imputation, so entries carry a complete nutrient profile instead of the zeros
+SR Legacy leaves behind for unassayed nutrients. It also ships household
+portions ("1 cup"), which are imported as serving sizes.
 
 For Foundation Foods, also extract the matching CSV archive and pass its
 directory as a fallback. Records omitted or invalid in the JSON export are
@@ -110,6 +122,42 @@ bin/import-off /home/gregmushen/nutrition-data/openfoodfacts-products.jsonl.gz \
 
 Both scripts auto-detect the current running container image. Re-running an import is safe — records are upserted by `(source, source_code)`.
 
+## Data sources
+
+Every food records which dataset it came from. `GET /foods/sources` returns the
+registry — publisher, licence, required citation, dataset version, food count,
+and a quality `tier` used to rank duplicates during search (lower is better):
+
+| Tier | Sources | What it means |
+| --- | --- | --- |
+| 0 | `custom`, `recipe` | Your own deliberate entries — always win |
+| 1 | `usda_fndds` | Gap-filled: USDA imputes missing values by documented procedures, so profiles are essentially complete |
+| 2 | `usda_foundation` | Lab-analysed, authoritative but sparse |
+| 3 | `usda_sr_legacy`, `food_data_central` | Compiled reference data, no longer maintained |
+| 4 | `usda_branded`, `open_food_facts` | Nutrition-label data — only what the manufacturer prints |
+
+`/foods/search?source=` accepts any code above, `all`, or `usda` for every USDA
+dataset. `food_data_central` is kept as an alias matching all USDA datasets so
+pre-split clients keep working.
+
+Registering a new source (CoFID, CNF, Frida, ...) means adding an entry to
+`app/sources.py` and a normalizer in `app/providers/` — `foods.source` is a
+foreign key onto the registry, so no schema migration is needed.
+
+Attribution note: Open Food Facts data is licensed under the
+[ODbL](https://opendatacommons.org/licenses/odbl/1-0/) and requires attribution;
+the citation text is in `GET /foods/sources`.
+
+### `null` vs `0`
+
+A nutrient is `null` when the source does not report it and `0` when it was
+measured as zero. These used to be indistinguishable — every unreported value
+was stored as `0`, so USDA spinach with no vitamin K assay looked identical to a
+food that genuinely contains none. Treat `null` as "unknown", not "none".
+
+Databases seeded before this change still hold placeholder zeros; re-import the
+affected dataset to replace them with `null`.
+
 ## Nutrients
 
 Foods track macronutrients plus added sugar, fat subtypes, cholesterol, caffeine,
@@ -124,5 +172,6 @@ python -m scripts.rebuild_food_database data/nutrition-enriched.db \
   data/imports/openfoodfacts/food.parquet \
   --foundation-json=data/imports/usda/foundation/FoodData_Central_foundation_food_json_2026-04-30.json \
   --foundation-csv-dir=data/imports/usda/foundation-csv/FoodData_Central_foundation_food_csv_2026-04-30 \
-  --sr-legacy-json=data/imports/usda/sr-legacy/FoodData_Central_sr_legacy_food_json_2018-04.json
+  --sr-legacy-json=data/imports/usda/sr-legacy/FoodData_Central_sr_legacy_food_json_2018-04.json \
+  --fndds-json=data/imports/usda/survey/FoodData_Central_survey_food_json_2021-2023.json
 ```

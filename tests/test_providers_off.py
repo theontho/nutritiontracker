@@ -65,4 +65,17 @@ def test_normalize_handles_missing_fields():
         "nutriments": {},
     }
     food = normalize_off_food(raw)
+    assert food["calories_kcal"] is None
+
+
+def test_normalize_keeps_declared_zero():
+    """A label declaring 0 g must stay 0, not become unknown."""
+    raw = {
+        "code": "001",
+        "product_name": "Diet soda",
+        "nutriments": {"energy-kcal_100g": 0, "proteins_100g": 0},
+    }
+    food = normalize_off_food(raw)
     assert food["calories_kcal"] == 0
+    assert food["protein_g"] == 0
+    assert food["fiber_g"] is None
