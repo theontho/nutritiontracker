@@ -6,7 +6,7 @@ def test_root_identifies_service(client):
     assert 'href="/docs"' in r.text
     assert "Give your assistant the" in r.text
     assert "link to this page." in r.text
-    assert "https://github.com/theontho/nutritiontracker" in r.text
+    assert "https://github.com/gregmushen/nutritiontracker" in r.text
     assert client.head("/").status_code == 200
 
 
