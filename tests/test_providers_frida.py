@@ -212,3 +212,20 @@ def test_import_frida_end_to_end(tmp_path):
     assert rows[0]["choline_mg"] == 5.7
     assert rows[0]["folic_acid_ug"] is None
     assert rows[1]["vitamin_c_mg"] is None
+
+
+def test_read_workbook_rejects_a_parameter_with_no_published_unit(tmp_path):
+    """A parameter missing from the Parameter sheet must not import unverified.
+
+    Comparing units only protects the values it can see, so a nutrient the
+    metadata never describes would be stored on trust.
+    """
+    path = _write_workbook(
+        tmp_path / "frida.xlsx",
+        foods=[("1", "Strawberry, raw")],
+        measurements=[("1", "356", "38.46"), ("1", "163", "0.05")],
+        parameters=[p for p in PARAMETERS if p[0] != "163"],
+    )
+
+    with pytest.raises(ValueError, match="163"):
+        list(read_frida_workbook(path))

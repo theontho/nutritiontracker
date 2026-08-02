@@ -229,3 +229,21 @@ def test_import_cnf_end_to_end(tmp_path):
     assert rows[1]["caffeine_mg"] == 40.0
     assert rows[1]["vitamin_k_ug"] is None
     assert rows[0]["iodine_ug"] is None
+
+
+def test_read_directory_rejects_a_nutrient_with_no_published_unit(tmp_path):
+    """A code missing from Nutrient_Name.csv must not import unverified.
+
+    Comparing units only protects the values it can see, so a nutrient the
+    metadata never describes would be stored on trust — the silent 1000x
+    rescale that verifying units exists to prevent.
+    """
+    directory = _write_bundle(
+        tmp_path / "cnf",
+        foods=[("2213", "Spinach, raw", "11")],
+        amounts=[("2213", "208", "23.0"), ("2213", "430", "482.9")],
+        nutrients=[n for n in NUTRIENT_NAMES if n[0] != "430"],
+    )
+
+    with pytest.raises(ValueError, match="430"):
+        list(read_cnf_directory(directory))

@@ -112,6 +112,20 @@ def _field_unit(field: str) -> str:
     return field.rsplit("_", 1)[-1]
 
 
+def require_published_unit(code: str, units_by_code: dict[str, str]) -> None:
+    """Fail if a nutrient we import has no unit published in the metadata.
+
+    `check_nutrient_units` can only compare units it was handed, so a code
+    missing from ``Nutrient_Name.csv`` would import completely unverified —
+    the exact silent 1000x rescale that checking units exists to prevent.
+    """
+    if code not in units_by_code:
+        raise ValueError(
+            f"CNF nutrient {code} has no unit in {NUTRIENT_NAME_FILE}; "
+            "refusing to import a value whose unit cannot be verified"
+        )
+
+
 def check_nutrient_units(units_by_code: dict[str, str]) -> None:
     """Fail if CNF reports a mapped nutrient in a unit we do not expect."""
     for field, codes in FIELD_NUTRIENTS.items():
@@ -213,6 +227,7 @@ def read_cnf_directory(directory: str | Path) -> Iterator[dict]:
         code = row["Nutrient_Code"]
         if code not in wanted:
             continue
+        require_published_unit(code, units_by_code)
         value = parse_cnf_value(row.get("Nutrient_Amount"))
         if value is None:
             continue
