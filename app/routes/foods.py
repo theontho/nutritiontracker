@@ -1,7 +1,13 @@
 from fastapi import APIRouter, HTTPException, Request
 
 from app.auth import current_user_id
-from app.models.food import NUTRIENT_FIELDS, FoodCreate, FoodOut, FoodUpdate
+from app.models.food import (
+    NUTRIENT_FIELDS,
+    FoodCreate,
+    FoodOut,
+    FoodSourceOut,
+    FoodUpdate,
+)
 from app.providers.open_food_facts import fetch_off_by_barcode
 from app.repositories.foods import FoodRepository
 from app.services.food_search import FoodSearchService
@@ -40,11 +46,30 @@ def search_foods(
     request: Request, q: str, source: str = "all", limit: int = 20, offset: int = 0
 ):
     """Search the food database by name or brand. Supports prefix matching ('chick' matches 'chicken breast').
-    Deduplicates results when the same food appears in multiple sources — prefers the record with more complete nutrient data.
-    Filter by source: `all`, `custom`, `open_food_facts`, `food_data_central`."""
+
+    Deduplicates results when the same food appears in multiple sources, preferring the
+    higher-quality source (see `GET /foods/sources` for tiers) and then the more complete
+    nutrient profile.
+
+    Filter by source: `all`, `custom`, `recipe`, `open_food_facts`, `usda_fndds`,
+    `usda_foundation`, `usda_sr_legacy`, `usda_branded`, or `usda` for every USDA dataset.
+    A nutrient of `null` means the source does not report it; `0` means it was measured as zero."""
     return _search_svc(request).search(
         q, source=source, user_id=current_user_id(request), limit=limit, offset=offset
     )
+
+
+@router.get(
+    "/sources", response_model=list[FoodSourceOut], summary="List food data sources"
+)
+def list_sources(request: Request):
+    """List the food composition datasets backing the catalog.
+
+    Each entry gives the publisher, licence, required citation text and the quality
+    `tier` used to rank duplicate foods during search (lower is better), plus how many
+    foods currently come from that source.
+    """
+    return _repo(request).list_sources()
 
 
 def _has_nutrients(food: dict) -> bool:
@@ -68,7 +93,7 @@ def get_by_barcode(request: Request, barcode: str):
         if not fresh:
             raise HTTPException(404, "Food not found")
         food_id = repo.create(**fresh)
-        return repo.get(food_id)
+        return repo.get(food_id, user_id=user_id)
 
     if not _has_nutrients(food) and food.get("source") == "open_food_facts":
         fresh = fetch_off_by_barcode(barcode)
