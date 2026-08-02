@@ -26,8 +26,18 @@ All endpoints (except `/health`) require `Authorization: Bearer <token>`.
 
 ## Users
 
-The configured `NT_BEARER_TOKEN` is the admin and existing default-user token.
-Use it to create a separate bearer token for each additional user:
+Single-user mode is the default. Under the hood it uses one **Default user**
+for all personal records, so existing deployments need no user configuration.
+
+Enable multi-user mode only when separate personal data is needed:
+
+```bash
+NT_MULTI_USER_ENABLED=true
+```
+
+With multi-user mode enabled, the configured `NT_BEARER_TOKEN` is the admin
+and default-user token. Use it to create a separate bearer token for each
+additional user:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/users \
