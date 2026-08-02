@@ -38,9 +38,11 @@ for arg in "$@"; do
   esac
 done
 source "$(dirname "${BASH_SOURCE[0]}")/_deploy-env"
-SSH="ssh ${SSH_OPTS[*]} $TARGET"
 
-IMAGE=$($SSH "docker inspect \$(docker ps --filter name=nutritiontracker-web --format '{{.Names}}' | head -1) --format '{{.Config.Image}}'")
+# Use the `remote` helper rather than rebuilding a scalar ssh command:
+# flattening SSH_OPTS into a string re-splits an SSH key path that
+# contains a space, which deploy.env is documented as allowing.
+IMAGE=$(remote "docker inspect \$(docker ps --filter name=nutritiontracker-web --format '{{.Names}}' | head -1) --format '{{.Config.Image}}'")
 
 echo "Using image: $IMAGE"
 echo "Importing: $HOST_FILE"
@@ -59,7 +61,7 @@ if [[ -n "$SOURCE" ]]; then
   SOURCE_ARG="--source=$SOURCE"
 fi
 
-$SSH "docker run --rm \
+remote "docker run --rm \
   -v \$(dirname '$HOST_FILE'):/nutrition-data \
   $CSV_MOUNT \
   -v nutritiontracker_data:/data \

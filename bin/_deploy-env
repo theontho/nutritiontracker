@@ -38,6 +38,15 @@ fi
 
 TARGET="$NT_DEPLOY_USER@$NT_DEPLOY_HOST"
 SSH=(ssh "${SSH_OPTS[@]}" "$TARGET")
+
+# rsync's -e takes a command *string* and splits it on whitespace, so it cannot
+# represent a key path containing a space however it is quoted. Reject that up
+# front rather than failing later with an opaque ssh error.
+if [[ "${NT_DEPLOY_SSH_KEY:-}" =~ [[:space:]] ]]; then
+  echo "NT_DEPLOY_SSH_KEY must not contain whitespace: ${NT_DEPLOY_SSH_KEY}" >&2
+  echo "rsync cannot pass such a path through to ssh. Move the key or symlink it." >&2
+  exit 1
+fi
 RSYNC_SSH="ssh ${SSH_OPTS[*]}"
 
 remote() { "${SSH[@]}" "$@"; }
