@@ -29,12 +29,15 @@ def search_foods(
 ):
     """Search the food database by name or brand. Supports prefix matching ('chick' matches 'chicken breast').
 
-    Deduplicates results when the same food appears in multiple sources, preferring the
-    higher-quality source (see `GET /foods/sources` for tiers) and then the more complete
-    nutrient profile.
+    Results are ordered by text relevance adjusted by source quality, so a generic
+    query returns measured composition data ahead of transcribed nutrition labels
+    while a branded query still finds the brand. Duplicates of the same food across
+    sources are collapsed, preferring the higher-quality source (see
+    `GET /foods/sources` for tiers) and then the more complete nutrient profile.
 
-    Filter by source: `all`, `custom`, `recipe`, `open_food_facts`, `usda_fndds`,
-    `usda_foundation`, `usda_sr_legacy`, `usda_branded`, or `usda` for every USDA dataset.
+    Filter by source with any code from `GET /foods/sources`, or `all`, `usda` for
+    every USDA dataset, or `cronometer` for everything imported from a personal
+    Cronometer export.
     A nutrient of `null` means the source does not report it; `0` means it was measured as zero."""
     return _search_svc(request).search(
         q, source=source, user_id=current_user_id(request), limit=limit, offset=offset

@@ -119,6 +119,12 @@ class FoodRepository:
         self, query: str, *, sources: Sequence[str] | None = None,
         user_id: int | None = None, limit: int = 20, offset: int = 0,
     ) -> list[dict]:
+        """Full-text matches ordered by relevance, each carrying its bm25 score.
+
+        Ordering here is text relevance only. Callers that care about source
+        quality re-rank the rows using the `relevance` score, which is why it
+        is returned rather than discarded.
+        """
         fts_query = " ".join(f"{term}*" for term in query.strip().split())
         filters = ""
         filter_values: list[object] = []
@@ -130,7 +136,8 @@ class FoodRepository:
             filters += " AND (f.owner_user_id IS NULL OR f.owner_user_id = ?)"
             filter_values.append(user_id)
         rows = self.conn.execute(
-            """SELECT f.* FROM foods_fts fts
+            """SELECT f.*, bm25(foods_fts) AS relevance
+               FROM foods_fts fts
                JOIN foods f ON f.id = fts.rowid
                WHERE foods_fts MATCH ?""" + filters + """
                ORDER BY rank

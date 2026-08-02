@@ -141,6 +141,17 @@ dataset, or `cronometer` for everything that arrived via a personal Cronometer
 export. `food_data_central` is kept as an alias matching all USDA datasets so
 pre-split clients keep working.
 
+Tier also drives search ordering, not just duplicate resolution. Results are
+ranked by text relevance with a per-tier penalty, because relevance alone put
+the wrong foods on top: SQLite's bm25 ties heavily (a search for "acai berry"
+returned four foods with identical scores, broken arbitrarily by insertion
+order) and it rewards short names, which branded label data has far more of —
+"butter" used to return Butterfinger, and "spinach" returned an Open Food Facts
+row of placeholder zeros ahead of any measured value. Reference sources also get
+their own retrieval pass, since label data outnumbers them roughly fifty to one
+and could otherwise fill the entire candidate window before a reference food was
+even considered. A branded query still returns its exact match first.
+
 Registering a new source (CNF, Frida, ...) means adding an entry to
 `app/sources.py` and a normalizer in `app/providers/` — `foods.source` is a
 foreign key onto the registry, so no schema migration is needed.
