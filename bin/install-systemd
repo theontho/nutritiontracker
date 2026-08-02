@@ -86,9 +86,19 @@ fi
 # 3. Environment file. Preserved if it already exists so the token is stable.
 #    The check runs under sudo because the directory is usually root-only, and
 #    an unprivileged test would silently fall through and rotate the token.
+#    It also has to fail closed: a truncated or hand-edited file that no longer
+#    declares a token would otherwise be kept, and the app treats a missing
+#    NT_BEARER_TOKEN as \"nothing to authenticate against\" and serves anonymously.
 sudo mkdir -p \"\$(dirname '$ENV_FILE')\"
 if sudo test -f '$ENV_FILE'; then
-  echo 'Keeping existing $ENV_FILE'
+  if sudo grep -Eq '^NT_BEARER_TOKEN=.+' '$ENV_FILE'; then
+    echo 'Keeping existing $ENV_FILE'
+  else
+    echo 'ERROR: $ENV_FILE exists but declares no NT_BEARER_TOKEN.' >&2
+    echo 'Refusing to continue: starting without a token disables authentication.' >&2
+    echo 'Fix or remove the file, then re-run.' >&2
+    exit 1
+  fi
 else
   echo 'Generating $ENV_FILE with a fresh bearer token'
   TOKEN=\$('$NT_DEPLOY_DIR/.venv/bin/python' -c 'import secrets; print(secrets.token_urlsafe(32))')
