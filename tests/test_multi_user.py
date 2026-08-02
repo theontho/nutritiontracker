@@ -129,3 +129,64 @@ def test_other_user_tokens_can_still_be_rotated(client, monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["token"] != user["token"]
+
+
+def test_schema_seeds_the_configured_default_user(monkeypatch):
+    """A deployment that sets NT_DEFAULT_USER_ID must still be able to write.
+
+    Owned rows reference users(id), so seeding a hardcoded 1 while the app
+    attributes rows to a different id leaves every insert failing the foreign
+    key on a completely fresh database.
+    """
+    import sqlite3
+
+    from app.database import init_schema
+
+    monkeypatch.setattr(settings, "default_user_id", 2)
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=ON")
+    init_schema(conn)
+
+    seeded = [row["id"] for row in conn.execute("SELECT id FROM users")]
+    assert settings.default_user_id in seeded
+
+    conn.execute(
+        "INSERT INTO foods (name, source, owner_user_id) VALUES ('probe', 'custom', ?)",
+        (settings.default_user_id,),
+    )
+    conn.close()
+
+
+def test_migration_0005_seeds_the_configured_default_user(monkeypatch):
+    """The upgrade path has the same constraint as a fresh install.
+
+    Legacy custom foods are handed to the default user, so the id the
+    migration seeds has to be the one the application is configured to use.
+    """
+    import importlib.util
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "0005_add_users_and_food_ownership.py"
+    )
+    spec = importlib.util.spec_from_file_location("migration_0005", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setenv("NT_DEFAULT_USER_ID", "2")
+    assert module._default_user_id() == 2
+
+    monkeypatch.delenv("NT_DEFAULT_USER_ID")
+    assert module._default_user_id() == 1
+
+    monkeypatch.setenv("NT_DEFAULT_USER_ID", "nope")
+    with pytest.raises(ValueError, match="must be an integer"):
+        module._default_user_id()
+
+    monkeypatch.setenv("NT_DEFAULT_USER_ID", "0")
+    with pytest.raises(ValueError, match="positive rowid"):
+        module._default_user_id()
