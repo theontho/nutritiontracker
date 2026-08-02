@@ -2,7 +2,7 @@
 
 A personal nutrition tracking API built with FastAPI and SQLite.
 
-**Live:** https://n.paracosmlab.com — OpenAPI schema at `/openapi.json`
+OpenAPI schema is served at `/openapi.json` on your own deployment.
 
 ![Nutrition Tracker Service landing page](docs/images/nutrition-tracker-service.png)
 
@@ -75,9 +75,8 @@ cp deploy/deploy.env.example deploy/deploy.env
 ```
 
 `deploy/deploy.env` is gitignored, and every `bin/` script reads it, so host
-names, SSH users and key paths stay out of the repository. The example is
-pre-filled with the values that used to be hardcoded, so an existing host works
-from a straight copy.
+names, SSH users and key paths stay out of the repository. The example ships
+with placeholders — replace them with your own host before deploying.
 
 ```bash
 bin/deploy                      # fetch, migrate and restart the service
@@ -98,7 +97,7 @@ pipeline needs these Woodpecker secrets alongside the existing
 `deploy_ssh_key`, `NT_BEARER_TOKEN`, `CLOUDFLARE_TUNNEL_TOKEN` and
 `KAMAL_REGISTRY_PASSWORD`:
 
-| Secret | Was hardcoded as |
+| Secret | Used for |
 | --- | --- |
 | `NT_DEPLOY_HOST` | the `servers:` and registry host |
 | `NT_DEPLOY_USER` | the `ssh: user:` |
