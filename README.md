@@ -130,14 +130,15 @@ and a quality `tier` used to rank duplicates during search (lower is better):
 
 | Tier | Sources | What it means |
 | --- | --- | --- |
-| 0 | `custom`, `recipe` | Your own deliberate entries — always win |
-| 1 | `usda_fndds` | Gap-filled: USDA imputes missing values by documented procedures, so profiles are essentially complete |
-| 2 | `usda_foundation`, `cofid`, `cnf`, `frida`, `afcd` | Lab-analysed, authoritative but sparse |
+| 0 | `custom`, `recipe`, `cronometer_custom` | Your own deliberate entries — always win |
+| 1 | `usda_fndds`, `nccdb` | Gap-filled: missing values imputed by documented procedures, so profiles are essentially complete |
+| 2 | `usda_foundation`, `cofid`, `cnf`, `frida`, `afcd`, `nuttab` | Lab-analysed, authoritative but sparse |
 | 3 | `usda_sr_legacy`, `food_data_central` | Compiled reference data, no longer maintained |
-| 4 | `usda_branded`, `open_food_facts` | Nutrition-label data — only what the manufacturer prints |
+| 4 | `usda_branded`, `open_food_facts`, `crdb`, `nutritionix`, `cronometer` | Nutrition-label data — only what the manufacturer prints |
 
-`/foods/search?source=` accepts any code above, `all`, or `usda` for every USDA
-dataset. `food_data_central` is kept as an alias matching all USDA datasets so
+`/foods/search?source=` accepts any code above, `all`, `usda` for every USDA
+dataset, or `cronometer` for everything that arrived via a personal Cronometer
+export. `food_data_central` is kept as an alias matching all USDA datasets so
 pre-split clients keep working.
 
 Registering a new source (CNF, Frida, ...) means adding an entry to
@@ -209,6 +210,36 @@ both as a share of total fat and as grams — only the gram columns are read.
 Its trans fat column is in milligrams while the rest are grams, so that one is
 scaled. It reports no vitamin K or choline. Only the per-100 g sheet is
 imported; the per-100 mL sheet re-states 213 foods that are already on it.
+
+### Cronometer (personal export)
+
+Imports the foods one Cronometer account actually logged, from an export
+directory containing `cronometer.sqlite3` and a `raw/mobile/food_details/`
+store:
+
+```bash
+python -m scripts.import_cronometer ~/path/to/cronometer-export
+```
+
+Provenance is preserved rather than flattened: Cronometer records the upstream
+database per food, so rows land under `nccdb`, `crdb`, `nutritionix`, `nuttab`
+or `cronometer_custom`, and every row is tagged `cronometer:<food id>` plus
+`cronometer-source:<upstream>`. Foods Cronometer drew from a database imported
+here in full (FoodData Central, USDA SR, CoFID, CNF) stay under the generic
+`cronometer` code keyed by Cronometer's food id, so they can never overwrite the
+authoritative row from the complete dataset.
+
+Only the raw per-100 g documents are read. The export's summary records are
+inconsistent — some are per 100 g, others per an unrecorded default serving
+(butter appears as 103 kcal, i.e. one tablespoon) — so foods with no raw
+document are skipped rather than scaled by guesswork. Cronometer publishes
+vitamin D in IU, which is converted to micrograms on import; nutrient units are
+verified against the export before anything is written.
+
+> **Licensing:** an export mixes open data with proprietary databases (NCCDB,
+> CRDB, Nutritionix). Importing your own export for your own use is personal
+> use, not redistribution. Do not republish the resulting rows or serve them
+> publicly, and do not commit export data to this repository.
 
 ### `null` vs `0`
 
