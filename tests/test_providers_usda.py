@@ -31,3 +31,19 @@ def test_normalize_handles_missing_nutrients():
     food = normalize_usda_food(raw)
     assert food["calories_kcal"] == 0
     assert food["protein_g"] == 0
+
+
+def test_normalize_supports_foundation_energy_ids_with_precedence():
+    raw = {
+        "fdcId": 100,
+        "description": "Foundation food",
+        "foodNutrients": [
+            {"nutrient": {"id": 1008}, "amount": 90},
+            {"nutrient": {"id": 2047}, "amount": 80},
+            {"nutrient": {"id": 2048}, "amount": 85},
+        ],
+    }
+
+    food = normalize_usda_food(raw)
+
+    assert food["calories_kcal"] == 90
