@@ -32,3 +32,88 @@ def test_no_dedup_different_foods(db):
     svc = FoodSearchService(repo)
     results = svc.search("banana")
     assert len(results) == 2
+
+
+def test_tier_wins_when_relevance_ties(db):
+    """The açaí case: identical names, so bm25 ties and tier must decide.
+
+    Both foods report the same number of nutrients, so nothing but source tier
+    can separate them.
+    """
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+    repo.create(
+        source="open_food_facts", name="Berry Acai", calories_kcal=17, vitamin_e_mg=0.0
+    )
+    repo.create(
+        source="nccdb", name="Acai Berry", calories_kcal=61, vitamin_e_mg=14.8
+    )
+    results = FoodSearchService(repo).search("acai berry")
+    assert results[0]["source"] == "nccdb"
+    assert results[0]["vitamin_e_mg"] == 14.8
+
+
+def test_tier_overcomes_a_terser_label_name(db):
+    """bm25 rewards short documents, which label data supplies far more of."""
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+    repo.create(source="open_food_facts", name="Butterfinger", calories_kcal=464)
+    repo.create(source="usda_fndds", name="Butter, stick, salted", calories_kcal=717)
+    results = FoodSearchService(repo).search("butter")
+    assert results[0]["name"] == "Butter, stick, salted"
+
+
+def test_exact_brand_match_still_wins(db):
+    """Tier must not be so strong that a branded search stops working."""
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+    repo.create(source="open_food_facts", name="Doritos Nacho Cheese")
+    repo.create(source="usda_fndds", name="Corn chips, nacho cheese flavored")
+    results = FoodSearchService(repo).search("doritos")
+    assert results[0]["name"] == "Doritos Nacho Cheese"
+
+
+def test_reference_foods_are_retrieved_past_a_wall_of_label_data(db):
+    """Reference sources get their own retrieval pass.
+
+    Label data outnumbers reference data ~50:1 in the real catalogue, so a
+    single relevance-ordered window fills with branded rows and the reference
+    food is never a candidate at all.
+    """
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+    for i in range(300):
+        repo.create(source="open_food_facts", name=f"Salmon Snack {i}")
+    repo.create(source="usda_fndds", name="Fish, salmon, sockeye, cooked", protein_g=25)
+    results = FoodSearchService(repo).search("salmon", limit=5)
+    assert results[0]["source"] == "usda_fndds"
+
+
+def test_relevance_score_does_not_leak_into_results(db):
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+    repo.create(source="open_food_facts", name="Banana")
+    results = FoodSearchService(repo).search("banana")
+    assert "relevance" not in results[0]
+
+
+def test_paging_is_applied_after_dedup(db):
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+    for i in range(10):
+        repo.create(source="open_food_facts", name=f"Oat Bar {i}")
+    svc = FoodSearchService(repo)
+    first = svc.search("oat bar", limit=4, offset=0)
+    second = svc.search("oat bar", limit=4, offset=4)
+    assert len(first) == len(second) == 4
+    assert {f["id"] for f in first}.isdisjoint({f["id"] for f in second})
+
+
+def test_source_filter_still_restricts_results(db):
+    """The extra reference pass must not smuggle in filtered-out sources."""
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+    repo.create(source="usda_fndds", name="Yogurt, greek, plain")
+    repo.create(source="open_food_facts", name="Greek Yogurt")
+    results = FoodSearchService(repo).search("yogurt", source="open_food_facts")
+    assert [f["source"] for f in results] == ["open_food_facts"]
