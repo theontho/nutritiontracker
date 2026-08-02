@@ -117,3 +117,42 @@ def test_source_filter_still_restricts_results(db):
     repo.create(source="open_food_facts", name="Greek Yogurt")
     results = FoodSearchService(repo).search("yogurt", source="open_food_facts")
     assert [f["source"] for f in results] == ["open_food_facts"]
+
+
+def test_paging_reaches_past_the_candidate_ceiling(db):
+    """A deep page must not come back empty while matches remain.
+
+    The candidate window used to be capped at a fixed ceiling, so `offset`
+    beyond it sliced past the end of the retrieved list and reported no
+    results even though thousands of foods still matched.
+    """
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+    for i in range(1200):
+        repo.create(source="open_food_facts", name=f"Apple item {i}",
+                    source_code=f"b{i}", calories_kcal=46)
+    svc = FoodSearchService(repo)
+
+    assert len(svc.search("apple", limit=20, offset=1100)) == 20
+    assert svc.search("apple", limit=20, offset=1200) == []
+
+
+def test_paging_does_not_repeat_or_skip_foods(db):
+    """Walking the pages must yield every distinct food exactly once."""
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+    for i in range(150):
+        repo.create(source="open_food_facts", name="Apple Juice",
+                    source_code=f"d{i}", calories_kcal=46)
+    for i in range(45):
+        repo.create(source="usda_fndds", name=f"Apple variety {i}",
+                    source_code=f"v{i}", calories_kcal=52)
+    svc = FoodSearchService(repo)
+
+    seen: list[int] = []
+    for offset in range(0, 60, 20):
+        seen += [food["id"] for food in svc.search("apple", limit=20, offset=offset)]
+
+    # 45 distinct varieties plus the one surviving "Apple Juice" duplicate.
+    assert len(seen) == len(set(seen))
+    assert len(seen) == 46
