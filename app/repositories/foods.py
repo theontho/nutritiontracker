@@ -33,7 +33,9 @@ class FoodRepository:
             END;
         """)
 
-    def create(self, *, source: str, name: str, **kwargs) -> int:
+    def create(
+        self, *, source: str, name: str, owner_user_id: int | None = None, **kwargs
+    ) -> int:
         other_fields = [
             "source_code", "brand", "barcode", "image_url", "serving_quantity",
             "serving_unit", "serving_size_text", "ingredients_text",
@@ -42,8 +44,8 @@ class FoodRepository:
             "product_quantity_unit", "base_quantity", "base_unit", "density_g_per_ml",
         ]
         all_fields = other_fields + list(NUTRIENT_FIELDS)
-        fields = ["source", "name"]
-        values = [source, name]
+        fields = ["source", "name", "owner_user_id"]
+        values = [source, name, owner_user_id]
         for f in all_fields:
             if f in kwargs:
                 fields.append(f)
@@ -94,37 +96,51 @@ class FoodRepository:
         )
         return cur.fetchone()[0]
 
-    def get(self, food_id: int) -> dict | None:
-        row = self.conn.execute("SELECT * FROM foods WHERE id = ?", (food_id,)).fetchone()
+    def get(self, food_id: int, *, user_id: int | None = None) -> dict | None:
+        query = "SELECT * FROM foods WHERE id = ?"
+        values: list[int] = [food_id]
+        if user_id is not None:
+            query += " AND (owner_user_id IS NULL OR owner_user_id = ?)"
+            values.append(user_id)
+        row = self.conn.execute(query, values).fetchone()
         return self._deserialize(row)
 
-    def get_by_barcode(self, barcode: str) -> dict | None:
-        row = self.conn.execute(
-            "SELECT * FROM foods WHERE barcode = ?", (barcode,)
-        ).fetchone()
+    def get_by_barcode(self, barcode: str, *, user_id: int | None = None) -> dict | None:
+        query = "SELECT * FROM foods WHERE barcode = ?"
+        values: list[int | str] = [barcode]
+        if user_id is not None:
+            query += " AND (owner_user_id IS NULL OR owner_user_id = ?)"
+            values.append(user_id)
+        row = self.conn.execute(query, values).fetchone()
         return self._deserialize(row)
 
     def search(
-        self, query: str, *, source: str | None = None, limit: int = 20, offset: int = 0
+        self, query: str, *, source: str | None = None, user_id: int | None = None,
+        limit: int = 20, offset: int = 0,
     ) -> list[dict]:
         fts_query = " ".join(f"{term}*" for term in query.strip().split())
+        ownership_clause = ""
+        ownership_values: tuple[int, ...] = ()
+        if user_id is not None:
+            ownership_clause = " AND (f.owner_user_id IS NULL OR f.owner_user_id = ?)"
+            ownership_values = (user_id,)
         if source and source != "all":
             rows = self.conn.execute(
                 """SELECT f.* FROM foods_fts fts
                    JOIN foods f ON f.id = fts.rowid
-                   WHERE foods_fts MATCH ? AND f.source = ?
+                   WHERE foods_fts MATCH ? AND f.source = ?""" + ownership_clause + """
                    ORDER BY rank
                    LIMIT ? OFFSET ?""",
-                (fts_query, source, limit, offset),
+                (fts_query, source, *ownership_values, limit, offset),
             ).fetchall()
         else:
             rows = self.conn.execute(
                 """SELECT f.* FROM foods_fts fts
                    JOIN foods f ON f.id = fts.rowid
-                   WHERE foods_fts MATCH ?
+                   WHERE foods_fts MATCH ?""" + ownership_clause + """
                    ORDER BY rank
                    LIMIT ? OFFSET ?""",
-                (fts_query, limit, offset),
+                (fts_query, *ownership_values, limit, offset),
             ).fetchall()
         return [self._deserialize(r) for r in rows]
 

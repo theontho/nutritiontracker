@@ -16,10 +16,20 @@ def get_connection(db_path: Path | None = None) -> sqlite3.Connection:
 
 def init_schema(conn: sqlite3.Connection) -> None:
     conn.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            token_hash TEXT UNIQUE,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        INSERT OR IGNORE INTO users (id, name) VALUES (1, 'Default user');
+
         CREATE TABLE IF NOT EXISTS foods (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             source TEXT NOT NULL CHECK(source IN ('custom','open_food_facts','food_data_central','recipe')),
             source_code TEXT,
+            owner_user_id INTEGER REFERENCES users(id),
             name TEXT NOT NULL,
             brand TEXT,
             barcode TEXT,
@@ -188,6 +198,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_foods_barcode ON foods(barcode);
         CREATE INDEX IF NOT EXISTS idx_foods_source ON foods(source);
+        CREATE INDEX IF NOT EXISTS idx_foods_owner ON foods(owner_user_id);
         CREATE INDEX IF NOT EXISTS idx_foods_source_code ON foods(source, source_code);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_foods_source_code_unique ON foods(source, source_code) WHERE source_code IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_diary_user_date ON diary_entries(user_id, date);
