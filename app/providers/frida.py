@@ -120,6 +120,21 @@ def _field_unit(field: str) -> str:
     return field.rsplit("_", 1)[-1]
 
 
+def require_published_unit(parameter_id: str, units_by_id: dict[str, str]) -> None:
+    """Fail if a nutrient we import has no unit published in the metadata.
+
+    `check_parameter_units` can only compare units it was handed, so a
+    parameter missing from the Parameter sheet would import completely
+    unverified — the exact silent rescale that checking units prevents.
+    """
+    if parameter_id not in units_by_id:
+        raise ValueError(
+            f"Frida parameter {parameter_id} has no unit in the "
+            f"{PARAMETER_SHEET!r} sheet; refusing to import a value whose "
+            "unit cannot be verified"
+        )
+
+
 def check_parameter_units(units_by_id: dict[str, str]) -> None:
     """Fail if Frida reports a mapped nutrient in a unit we do not expect."""
     for field, parameter_ids in FIELD_PARAMETERS.items():
@@ -221,6 +236,7 @@ def read_frida_workbook(path: str | Path) -> Iterator[dict]:
             parameter_id = str(row.get("ParameterID") or "").strip()
             if parameter_id not in wanted:
                 continue
+            require_published_unit(parameter_id, units_by_id)
             value = parse_frida_value(row.get("ResVal"))
             if value is None:
                 continue
