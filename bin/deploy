@@ -33,5 +33,5 @@ sleep 3
 systemctl is-active '$NT_DEPLOY_SERVICE'"
 
 echo "Checking health"
-remote "curl -fsS http://127.0.0.1:8000/health" && echo
+remote "curl -fsS http://127.0.0.1:${NT_APP_PORT:-8000}/health" && echo
 echo "Deployed."
