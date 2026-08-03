@@ -202,18 +202,52 @@ nutritiontracker diary search "chicken breast"
 nutritiontracker diary show
 nutritiontracker stats daily
 nutritiontracker weight add 180 --unit lb
+nutritiontracker events list --start 2026-08-01
+nutritiontracker kitchen inventory list --search tomato
 ```
 
 Pass `--json` before the command for machine-readable output, such as
 `nutritiontracker --json stats daily`.
 
-The read-only `query` command covers API lookups that do not have a dedicated
-CLI command. Parameters are repeatable and results are always JSON:
+The CLI has command groups for every API resource:
+
+| Group | Coverage |
+| --- | --- |
+| `activity` | Daily/range queries and step imports |
+| `diary` | Add, show, search, update and delete |
+| `events` | Event and event-type CRUD, filtering and summaries |
+| `foods` | Search, barcode lookup, sources and custom-food CRUD |
+| `journal` | Create, date/range queries, update and delete |
+| `kitchen` | Inventory, meal matching, favorites and shopping lists |
+| `recipes` | List, get, create, update and delete |
+| `stats` | Daily and date-range nutrition summaries |
+| `users` | Current user, admin listing, creation and token rotation |
+| `weight` | Add, list, update and delete |
+
+Complex create and update commands accept a JSON object with `--data` or
+`--data-file`, matching the corresponding OpenAPI request schema:
+
+```bash
+nutritiontracker recipes create --data-file recipe.json
+nutritiontracker events update 12 --data '{"notes":"updated"}'
+nutritiontracker foods create --data-file custom-food.json
+```
+
+`query` covers arbitrary read-only lookups. Parameters are repeatable and
+results are always JSON:
 
 ```bash
 nutritiontracker query /kitchen/inventory --param q=tomato --param status=have
 nutritiontracker query /events --param start=2026-08-01 --param limit=20
 nutritiontracker query /recipes --param limit=10
+```
+
+`request` exposes authenticated GET, POST, PATCH and DELETE for any current or
+future endpoint:
+
+```bash
+nutritiontracker request PATCH /recipes/7 --data '{"name":"Dinner"}'
+nutritiontracker request DELETE /diary/entries/42
 ```
 
 ## Data import
