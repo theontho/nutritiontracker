@@ -135,3 +135,54 @@ def test_rejects_unknown_ids(tmp_path):
         repoint(path, 9999, food)
     with pytest.raises(ValueError, match="No food"):
         repoint(path, entry_id, 9999)
+
+
+def test_rejects_food_owned_by_another_user(tmp_path):
+    path = tmp_path / "db.sqlite"
+    conn = _connection(path)
+    conn.execute("INSERT INTO users (id, name) VALUES (2, 'Second')")
+    original = _insert_food(
+        conn, source="custom", source_code=None, name="Original"
+    )
+    private = _insert_food(
+        conn,
+        source="custom",
+        source_code=None,
+        name="Other user's food",
+        owner_user_id=2,
+    )
+    entry_id = _insert_entry(conn, original, "Original")
+    conn.commit()
+    conn.close()
+
+    with pytest.raises(ValueError, match="private to a different user"):
+        repoint(path, entry_id, private)
+
+
+def test_repoint_keeps_tag_arrays_as_arrays(tmp_path):
+    path = tmp_path / "db.sqlite"
+    conn = _connection(path)
+    original = _insert_food(
+        conn, source="open_food_facts", source_code="1", name="Original"
+    )
+    replacement = _insert_food(
+        conn,
+        source="custom",
+        source_code=None,
+        name="Tagged",
+        allergens_tags=json.dumps(["en:milk"]),
+    )
+    entry_id = _insert_entry(conn, original, "Original")
+    conn.commit()
+    conn.close()
+
+    repoint(path, entry_id, replacement)
+
+    check = sqlite3.connect(path)
+    snapshot = json.loads(
+        check.execute(
+            "SELECT food_snapshot FROM diary_entries WHERE id = ?", (entry_id,)
+        ).fetchone()[0]
+    )
+    check.close()
+    assert snapshot["allergens_tags"] == ["en:milk"]

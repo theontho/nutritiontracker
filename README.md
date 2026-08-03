@@ -73,7 +73,7 @@ between them without a second config file.
 | Runs | git checkout + virtualenv | container image |
 | Needs | Python 3.12+, systemd, git | Docker, a registry, a build host |
 | Suits | Raspberry Pi, small VPS, anything memory-constrained | multi-host or container-native setups |
-| Install | `bin/install-systemd` | `kamal deploy` |
+| Install | `bin/install-systemd` | `bin/kamal deploy` |
 
 Deployment targets are not committed. Copy the template and fill in your host:
 
@@ -131,7 +131,8 @@ database is kept alongside the new one.
 
 ### Container hosts (Kamal)
 
-`kamal deploy` reads `config/deploy.yml`, which takes its target from the same
+`bin/kamal deploy` loads `deploy/deploy.env` before running Kamal, so
+`config/deploy.yml` takes its target from the same
 `deploy/deploy.env` values. Ignore the systemd-only variables on these hosts.
 
 ### Continuous deployment

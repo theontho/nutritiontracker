@@ -37,8 +37,10 @@ builder:
 
 ssh:
   user: <%= ENV.fetch("NT_DEPLOY_USER") %>
+<% if ENV["NT_DEPLOY_SSH_KEY"] && !ENV["NT_DEPLOY_SSH_KEY"].empty? %>
   keys:
-    - <%= ENV.fetch("NT_DEPLOY_SSH_KEY", "~/.ssh/id_rsa") %>
+    - <%= ENV["NT_DEPLOY_SSH_KEY"] %>
+<% end %>
 
 accessories:
   cloudflared:

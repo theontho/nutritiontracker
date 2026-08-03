@@ -8,12 +8,13 @@
 # and one systemd unit. No container runtime, no registry, no build step, which
 # is what makes it viable on a Raspberry Pi or an equivalent small box.
 #
-# The script is idempotent. An existing environment file is never overwritten,
-# so the bearer token and database path survive re-runs.
+# The script is idempotent. The bearer token survives re-runs while managed
+# settings are reconciled with deploy/deploy.env.
 
 source "$(dirname "${BASH_SOURCE[0]}")/_deploy-env"
 
 require_vars NT_DEPLOY_DIR NT_DEPLOY_SERVICE NT_DEPLOY_DB
+umask 077
 
 if [[ $# -gt 0 ]]; then
   echo "Unknown option: $1" >&2
@@ -63,9 +64,8 @@ if grep -q '__[A-Z_]*__' <<<"$UNIT"; then
   exit 1
 fi
 
-printf '%s\n' "$UNIT" | remote "cat > /tmp/$NT_DEPLOY_SERVICE.service"
-
 remote "set -euo pipefail
+umask 077
 
 # 1. Checkout.
 if [[ ! -d '$NT_DEPLOY_DIR/.git' ]]; then
@@ -73,7 +73,8 @@ if [[ ! -d '$NT_DEPLOY_DIR/.git' ]]; then
   git clone --branch '$BRANCH' '$REPO_URL' '$NT_DEPLOY_DIR'
 fi
 cd '$NT_DEPLOY_DIR'
-mkdir -p '$DATA_DIR'
+install -d -m 700 '$DATA_DIR'
+chmod 700 '$DATA_DIR'
 
 # 2. Virtualenv. Created only once; refreshed on every run.
 if [[ ! -x '$NT_DEPLOY_DIR/.venv/bin/python' ]]; then
@@ -83,39 +84,46 @@ fi
 '$NT_DEPLOY_DIR/.venv/bin/pip' install -q --upgrade pip
 '$NT_DEPLOY_DIR/.venv/bin/pip' install -q -e .
 
-# 3. Environment file. Preserved if it already exists so the token is stable.
+# 3. Environment file. Preserve the token, but reconcile managed settings.
 #    The check runs under sudo because the directory is usually root-only, and
 #    an unprivileged test would silently fall through and rotate the token.
 #    It also has to fail closed: a truncated or hand-edited file that no longer
 #    declares a token would otherwise be kept, and the app treats a missing
 #    NT_BEARER_TOKEN as \"nothing to authenticate against\" and serves anonymously.
-sudo mkdir -p \"\$(dirname '$ENV_FILE')\"
+sudo install -d -o root -g '$GROUP' -m 750 \"\$(dirname '$ENV_FILE')\"
 if sudo test -f '$ENV_FILE'; then
-  if sudo grep -Eq '^NT_BEARER_TOKEN=.+' '$ENV_FILE'; then
-    echo 'Keeping existing $ENV_FILE'
-  else
+  TOKEN=\$(sudo sed -n 's/^NT_BEARER_TOKEN=//p' '$ENV_FILE' | head -n 1)
+  if [[ -z \"\$TOKEN\" ]]; then
     echo 'ERROR: $ENV_FILE exists but declares no NT_BEARER_TOKEN.' >&2
     echo 'Refusing to continue: starting without a token disables authentication.' >&2
     echo 'Fix or remove the file, then re-run.' >&2
     exit 1
   fi
+  echo 'Preserving the existing bearer token in $ENV_FILE'
 else
   echo 'Generating $ENV_FILE with a fresh bearer token'
   TOKEN=\$('$NT_DEPLOY_DIR/.venv/bin/python' -c 'import secrets; print(secrets.token_urlsafe(32))')
-  printf 'NT_DB_PATH=%s\nNT_BEARER_TOKEN=%s\nNT_MULTI_USER_ENABLED=%s\n' \
-    '$NT_DEPLOY_DB' \"\$TOKEN\" '${NT_MULTI_USER_ENABLED:-true}' \
-    | sudo tee '$ENV_FILE' >/dev/null
 fi
-sudo chown root:'$GROUP' '$ENV_FILE'
-sudo chmod 640 '$ENV_FILE'
+ENV_TMP=\$(mktemp)
+printf 'NT_DB_PATH=%s\nNT_BEARER_TOKEN=%s\nNT_MULTI_USER_ENABLED=%s\n' \
+  '$NT_DEPLOY_DB' \"\$TOKEN\" '${NT_MULTI_USER_ENABLED:-true}' > \"\$ENV_TMP\"
+sudo install -o root -g '$GROUP' -m 640 \"\$ENV_TMP\" '$ENV_FILE'
+rm -f \"\$ENV_TMP\"
 
 # 4. Schema.
 NT_DB_PATH='$NT_DEPLOY_DB' '$NT_DEPLOY_DIR/.venv/bin/alembic' upgrade head
+chmod 600 '$NT_DEPLOY_DB'"
 
-# 5. Unit.
-sudo install -o root -g root -m 644 /tmp/$NT_DEPLOY_SERVICE.service \
-  /etc/systemd/system/$NT_DEPLOY_SERVICE.service
-rm -f /tmp/$NT_DEPLOY_SERVICE.service
+# 5. Unit. Stage it in a root-owned file so another local user cannot replace
+#    the content between upload and privileged installation.
+printf '%s\n' "$UNIT" | remote "set -euo pipefail
+UNIT_TMP=\$(sudo mktemp '/etc/systemd/system/.$NT_DEPLOY_SERVICE.service.XXXXXX')
+cleanup() { sudo rm -f \"\$UNIT_TMP\"; }
+trap cleanup EXIT
+sudo tee \"\$UNIT_TMP\" >/dev/null
+sudo chmod 644 \"\$UNIT_TMP\"
+sudo mv \"\$UNIT_TMP\" '/etc/systemd/system/$NT_DEPLOY_SERVICE.service'
+trap - EXIT
 sudo systemctl daemon-reload
 sudo systemctl enable '$NT_DEPLOY_SERVICE'
 sudo systemctl restart '$NT_DEPLOY_SERVICE'

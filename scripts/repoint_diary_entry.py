@@ -17,7 +17,9 @@ import json
 import sqlite3
 from pathlib import Path
 
+from app.repositories.foods import FoodRepository
 from app.services.diary import build_food_snapshot, compute_entry_nutrients
+from app.services.unit_conversion import convert_to_grams
 
 
 def repoint(db_path: Path, entry_id: int, food_id: int) -> dict:
@@ -25,7 +27,8 @@ def repoint(db_path: Path, entry_id: int, food_id: int) -> dict:
     conn.row_factory = sqlite3.Row
     try:
         entry = conn.execute(
-            "SELECT id, unit, grams, food_id, food_name FROM diary_entries WHERE id = ?",
+            """SELECT id, user_id, unit, grams, food_id, food_name
+               FROM diary_entries WHERE id = ?""",
             (entry_id,),
         ).fetchone()
         if entry is None:
@@ -36,13 +39,25 @@ def repoint(db_path: Path, entry_id: int, food_id: int) -> dict:
                 "only gram entries can be repointed without a unit conversion"
             )
 
-        food = conn.execute("SELECT * FROM foods WHERE id = ?", (food_id,)).fetchone()
-        if food is None:
+        raw_food = conn.execute("SELECT id FROM foods WHERE id = ?", (food_id,)).fetchone()
+        if raw_food is None:
             raise ValueError(f"No food {food_id}")
+        food_dict = FoodRepository(conn).get(food_id, user_id=entry["user_id"])
+        if food_dict is None:
+            raise ValueError(
+                f"Food {food_id} is private to a different user than entry {entry_id}"
+            )
 
-        food_dict = dict(food)
         snapshot = build_food_snapshot(food_dict)
-        nutrients = compute_entry_nutrients(food_dict, entry["grams"])
+        conversion = convert_to_grams(
+            entry["grams"],
+            "g",
+            density_g_per_ml=food_dict.get("density_g_per_ml"),
+        )
+        nutrients = compute_entry_nutrients(
+            food_dict,
+            conversion.amount_in(food_dict.get("base_unit", "g")),
+        )
 
         conn.execute(
             """UPDATE diary_entries

@@ -14,6 +14,7 @@ ExecStart=__DIR__/.venv/bin/uvicorn app.main:app --host __BIND_HOST__ --port __P
 Restart=on-failure
 RestartSec=5
 SyslogIdentifier=__SERVICE__
+UMask=0077
 
 # Resource guards for a small host. A single worker serving SQLite sits far
 # below these; they exist so a runaway query cannot take the whole box down.

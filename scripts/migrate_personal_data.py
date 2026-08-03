@@ -9,8 +9,17 @@ custom or otherwise unmatched foods are copied first and remapped.
 """
 
 import argparse
+import json
 import sqlite3
 from pathlib import Path
+
+USDA_SOURCES = (
+    "food_data_central",
+    "usda_fndds",
+    "usda_foundation",
+    "usda_sr_legacy",
+    "usda_branded",
+)
 
 
 PERSONAL_TABLES = (
@@ -65,17 +74,38 @@ def _find_or_copy_food(
 
     food = source.execute("SELECT * FROM foods WHERE id = ?", (source_food_id,)).fetchone()
     if food is None:
-        raise ValueError(f"Diary entry references missing source food {source_food_id}")
+        raise ValueError(f"Personal record references missing source food {source_food_id}")
 
     source_code = food["source_code"]
     if source_code is not None:
-        existing = target.execute(
-            "SELECT id FROM foods WHERE source = ? AND source_code = ?",
-            (food["source"], source_code),
-        ).fetchone()
-        if existing:
-            food_id_map[source_food_id] = existing["id"]
-            return existing["id"]
+        owner_user_id = food["owner_user_id"]
+        if owner_user_id is not None:
+            matches = target.execute(
+                """SELECT id FROM foods
+                   WHERE source = ? AND source_code = ? AND owner_user_id = ?""",
+                (food["source"], source_code, owner_user_id),
+            ).fetchall()
+        elif food["source"] == "food_data_central":
+            placeholders = ", ".join("?" for _ in USDA_SOURCES)
+            matches = target.execute(
+                f"""SELECT id FROM foods
+                    WHERE source_code = ? AND owner_user_id IS NULL
+                      AND source IN ({placeholders})""",
+                (source_code, *USDA_SOURCES),
+            ).fetchall()
+        else:
+            matches = target.execute(
+                """SELECT id FROM foods
+                   WHERE source = ? AND source_code = ? AND owner_user_id IS NULL""",
+                (food["source"], source_code),
+            ).fetchall()
+        if len(matches) > 1:
+            raise ValueError(
+                f"Source food {source_food_id} matches multiple target foods"
+            )
+        if matches:
+            food_id_map[source_food_id] = matches[0]["id"]
+            return matches[0]["id"]
 
     target_food_columns = tuple(column for column in food_columns if column != "id")
     new_id = _insert_row(target, "foods", food, target_food_columns)
@@ -134,7 +164,9 @@ def migrate_personal_data(source_path: Path, target_path: Path) -> dict[str, int
 
         user_count = _migrate_users(source, target)
 
-        for food in source.execute("SELECT id FROM foods WHERE source = 'custom' ORDER BY id"):
+        for food in source.execute(
+            "SELECT id FROM foods WHERE owner_user_id IS NOT NULL ORDER BY id"
+        ):
             _find_or_copy_food(
                 source, target, food["id"], common_food_columns, food_id_map
             )
@@ -156,6 +188,17 @@ def migrate_personal_data(source_path: Path, target_path: Path) -> dict[str, int
                 overrides = None
                 if table == "diary_entries":
                     overrides = {"food_id": food_id_map[row["food_id"]]}
+                elif table == "recipes":
+                    ingredients = json.loads(row["ingredients"])
+                    for ingredient in ingredients:
+                        ingredient["food_id"] = _find_or_copy_food(
+                            source,
+                            target,
+                            ingredient["food_id"],
+                            common_food_columns,
+                            food_id_map,
+                        )
+                    overrides = {"ingredients": json.dumps(ingredients)}
                 _insert_row(target, table, row, common_columns, overrides)
                 count += 1
             copied[table] = count
