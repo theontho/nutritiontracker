@@ -1,34 +1,32 @@
 from fastapi import APIRouter, Request
 
 from app.auth import current_user_id
-from app.models.food import NutrientsPer100
 from app.models.stats import DailyStats, RangeDailyStats
 from app.repositories.activity import ActivityRepository
 from app.repositories.diary import DiaryRepository
+from app.services.nutrients import sum_nutrients
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
-NUTRIENT_FIELDS = list(NutrientsPer100.model_fields.keys())
 MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"]
 
 
-def _zero_nutrients() -> dict:
-    return {f: 0.0 for f in NUTRIENT_FIELDS}
-
-
-def _sum_nutrients(a: dict, b: dict) -> dict:
-    return {f: round(a.get(f, 0) + b.get(f, 0), 2) for f in NUTRIENT_FIELDS}
-
-
 def _compute_daily(entries: list[dict], date: str) -> dict:
-    meals = {m: _zero_nutrients() for m in MEAL_TYPES}
-    for entry in entries:
-        nt = entry.get("nutrients_total", {})
-        meal = entry["meal_type"]
-        meals[meal] = _sum_nutrients(meals[meal], nt)
-    total = _zero_nutrients()
-    for m_nutrients in meals.values():
-        total = _sum_nutrients(total, m_nutrients)
+    meals = {
+        meal: sum_nutrients(
+            (
+                entry.get("nutrients_total", {})
+                for entry in entries
+                if entry["meal_type"] == meal
+            ),
+            empty_is_zero=True,
+        )
+        for meal in MEAL_TYPES
+    }
+    total = sum_nutrients(
+        (entry.get("nutrients_total", {}) for entry in entries),
+        empty_is_zero=True,
+    )
     return {
         "date": date,
         "total": total,
@@ -37,7 +35,9 @@ def _compute_daily(entries: list[dict], date: str) -> dict:
     }
 
 
-@router.get("/daily/{date}", response_model=DailyStats, summary="Daily nutrition summary")
+@router.get(
+    "/daily/{date}", response_model=DailyStats, summary="Daily nutrition summary"
+)
 def daily_stats(request: Request, date: str):
     """Get total nutrients and per-meal breakdown for a given date. All four meal types (breakfast, lunch, dinner, snack) are always included — meals with no entries show zero values."""
     diary = DiaryRepository(request.app.state.db)
@@ -57,7 +57,11 @@ def daily_stats(request: Request, date: str):
     return result
 
 
-@router.get("/range", response_model=list[RangeDailyStats], summary="Nutrition summary over a date range")
+@router.get(
+    "/range",
+    response_model=list[RangeDailyStats],
+    summary="Nutrition summary over a date range",
+)
 def range_stats(request: Request, start: str, end: str):
     """Get daily nutrition totals for a date range (YYYY-MM-DD). Only days with diary entries are included. Useful for trend analysis."""
     diary = DiaryRepository(request.app.state.db)

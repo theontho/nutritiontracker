@@ -1,13 +1,8 @@
-from app.models.food import NutrientsPer100
+from app.services.nutrients import scale_nutrients
 
 
 def compute_entry_nutrients(food: dict, grams: float) -> dict:
-    nutrient_fields = list(NutrientsPer100.model_fields.keys())
-    result = {}
-    for field in nutrient_fields:
-        per_100 = food.get(field, 0) or 0
-        result[field] = round(per_100 * grams / 100, 2)
-    return result
+    return scale_nutrients(food, grams / 100)
 
 
 def build_food_snapshot(food: dict) -> dict:

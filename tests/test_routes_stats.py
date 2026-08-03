@@ -7,8 +7,12 @@ def _seed_entries(db):
     food_repo = FoodRepository(db)
     food_repo.ensure_fts()
     fid = food_repo.create(
-        source="custom", name="Banana", calories_kcal=89,
-        protein_g=1.1, carbs_g=22.8, fat_g=0.3,
+        source="custom",
+        name="Banana",
+        calories_kcal=89,
+        protein_g=1.1,
+        carbs_g=22.8,
+        fat_g=0.3,
     )
     food = food_repo.get(fid)
 
@@ -16,9 +20,14 @@ def _seed_entries(db):
     for meal in ["breakfast", "lunch"]:
         nutrients = compute_entry_nutrients(food, 100)
         diary.create(
-            user_id=1, date="2026-05-19", meal_type=meal,
-            food_id=fid, food_snapshot=build_food_snapshot(food),
-            amount=100, unit="g", grams=100,
+            user_id=1,
+            date="2026-05-19",
+            meal_type=meal,
+            food_id=fid,
+            food_snapshot=build_food_snapshot(food),
+            amount=100,
+            unit="g",
+            grams=100,
             nutrients_total=nutrients,
         )
     return fid
@@ -35,6 +44,8 @@ def test_daily_stats(client, db):
     assert data["meals"]["breakfast"]["calories_kcal"] == 89
     assert data["meals"]["lunch"]["calories_kcal"] == 89
     assert data["meals"]["dinner"]["calories_kcal"] == 0
+    assert data["total"]["fluoride_ug"] is None
+    assert data["meals"]["dinner"]["fluoride_ug"] == 0
 
 
 def test_daily_stats_empty(client, db):
@@ -51,3 +62,12 @@ def test_range_stats(client, db):
     days = r.json()
     assert len(days) == 1
     assert days[0]["date"] == "2026-05-19"
+
+
+def test_entry_nutrients_preserve_unknown_and_measured_zero():
+    nutrients = compute_entry_nutrients(
+        {"fluoride_ug": None, "sodium_mg": 0},
+        50,
+    )
+    assert nutrients["fluoride_ug"] is None
+    assert nutrients["sodium_mg"] == 0
