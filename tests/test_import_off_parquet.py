@@ -144,3 +144,58 @@ def test_null_unit_does_not_abort_the_import():
 
     food = normalize_off_food(product)
     assert food["calcium_mg"] == pytest.approx(12.0)
+
+
+def test_import_rejects_missing_required_columns(tmp_path):
+    source_path = tmp_path / "missing-code.parquet"
+    pq.write_table(
+        pa.Table.from_pylist(
+            [{"product_name": [{"lang": "en", "text": "No identity"}]}]
+        ),
+        source_path,
+    )
+
+    with pytest.raises(ValueError, match=r"code, nutriments"):
+        import_off_parquet(str(source_path), str(tmp_path / "nutrition.db"))
+
+
+def test_reimport_preserves_metadata_when_optional_column_is_absent(tmp_path):
+    source_path = tmp_path / "full.parquet"
+    database_path = tmp_path / "nutrition.db"
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                {
+                    "code": "123",
+                    "product_name": [{"lang": "en", "text": "Original"}],
+                    "allergens_tags": ["en:milk"],
+                    "nutriments": [],
+                }
+            ]
+        ),
+        source_path,
+    )
+    import_off_parquet(str(source_path), str(database_path))
+
+    update_path = tmp_path / "without-metadata.parquet"
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                {
+                    "code": "123",
+                    "product_name": [{"lang": "en", "text": "Updated"}],
+                    "nutriments": [],
+                }
+            ]
+        ),
+        update_path,
+    )
+    import_off_parquet(str(update_path), str(database_path))
+
+    conn = get_connection(database_path)
+    food = conn.execute(
+        "SELECT name, allergens_tags FROM foods WHERE source_code = '123'"
+    ).fetchone()
+    conn.close()
+    assert food["name"] == "Updated"
+    assert food["allergens_tags"] == '["en:milk"]'

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class NutrientsPer100(BaseModel):
@@ -105,6 +105,19 @@ class FoodUpdate(BaseModel):
     product_quantity_unit: str | None = None
     density_g_per_ml: float | None = None
     nutrients: NutrientsPer100 | None = None
+
+    @field_validator(
+        "allergens_tags",
+        "dietary_tags",
+        "categories_tags",
+        "labels_tags",
+        "countries_tags",
+    )
+    @classmethod
+    def _tags_cannot_be_null(cls, value: list[str] | None) -> list[str]:
+        if value is None:
+            raise ValueError("tag lists cannot be null; use [] to clear them")
+        return value
 
 
 class FoodOut(BaseModel):
