@@ -8,7 +8,11 @@ from pathlib import Path
 
 from app.config import settings
 from app.database import get_connection
-from app.services.diary import build_food_snapshot, compute_entry_nutrients
+from app.services.diary import (
+    SNAPSHOT_CATALOG_VERSION_KEY,
+    build_food_snapshot,
+    compute_entry_nutrients,
+)
 from app.services.recipe_nutrition import compute_recipe_nutrients
 
 
@@ -20,7 +24,7 @@ def recompute(db_path: Path) -> tuple[int, int]:
         connection.execute("BEGIN IMMEDIATE")
         diary_rows = connection.execute(
             """
-            SELECT d.id AS entry_id, d.grams, f.*
+            SELECT d.id AS entry_id, d.grams, d.food_snapshot AS saved_food_snapshot, f.*
             FROM diary_entries d
             JOIN foods f ON f.id = d.food_id
             ORDER BY d.id
@@ -30,7 +34,16 @@ def recompute(db_path: Path) -> tuple[int, int]:
             food = dict(row)
             entry_id = int(food.pop("entry_id"))
             grams = float(food.pop("grams"))
+            saved_snapshot = json.loads(str(food.pop("saved_food_snapshot")))
+            if not isinstance(saved_snapshot, dict):
+                raise ValueError(
+                    f"Diary entry {entry_id} has a malformed food snapshot"
+                )
             snapshot = build_food_snapshot(food)
+            if saved_snapshot.get(SNAPSHOT_CATALOG_VERSION_KEY) == snapshot.get(
+                SNAPSHOT_CATALOG_VERSION_KEY
+            ):
+                continue
             nutrients = compute_entry_nutrients(food, grams)
             connection.execute(
                 """
@@ -53,6 +66,7 @@ def recompute(db_path: Path) -> tuple[int, int]:
         ).fetchall()
         for recipe in recipe_rows:
             ingredients = json.loads(str(recipe["ingredients"]))
+            changed = False
             for ingredient in ingredients:
                 food_row = connection.execute(
                     "SELECT * FROM foods WHERE id = ?", (ingredient["food_id"],)
@@ -62,7 +76,18 @@ def recompute(db_path: Path) -> tuple[int, int]:
                         f"Recipe {recipe['id']} references missing food "
                         f"{ingredient['food_id']}"
                     )
-                ingredient["food_snapshot"] = build_food_snapshot(dict(food_row))
+                snapshot = build_food_snapshot(dict(food_row))
+                saved_snapshot = ingredient.get("food_snapshot")
+                saved_version = (
+                    saved_snapshot.get(SNAPSHOT_CATALOG_VERSION_KEY)
+                    if isinstance(saved_snapshot, dict)
+                    else None
+                )
+                if saved_version != snapshot[SNAPSHOT_CATALOG_VERSION_KEY]:
+                    ingredient["food_snapshot"] = snapshot
+                    changed = True
+            if not changed:
+                continue
             per_100, per_serving = compute_recipe_nutrients(
                 ingredients,
                 float(recipe["total_weight_g"]),

@@ -43,7 +43,15 @@ exec 9>'$BACKUP_DIR/.db-push.lock'
 flock -n 9 || { echo 'Another db-push is already running on this host' >&2; exit 1; }
 
 cd '$NT_DEPLOY_DIR'
+service_stopped=0
+restore_service() {
+  if [[ \"\$service_stopped\" -eq 1 ]]; then
+    sudo systemctl start '$NT_DEPLOY_SERVICE'
+  fi
+}
+trap restore_service EXIT
 sudo systemctl stop '$NT_DEPLOY_SERVICE'
+service_stopped=1
 
 .venv/bin/python - <<'PY'
 import sqlite3
@@ -58,12 +66,25 @@ test -s '$REMOTE_BACKUP' || { echo 'Backup is missing or empty; aborting' >&2; \
   sudo systemctl start '$NT_DEPLOY_SERVICE'; exit 1; }
 
 .venv/bin/python -m scripts.migrate_personal_data '$REMOTE_BACKUP' '$REMOTE_INCOMING'
+.venv/bin/python -m scripts.recompute_nutrient_snapshots --db '$REMOTE_INCOMING'
+
+.venv/bin/python - <<'PY'
+import sqlite3
+connection = sqlite3.connect('file:$REMOTE_INCOMING?mode=ro', uri=True)
+errors = connection.execute('PRAGMA foreign_key_check').fetchall()
+connection.close()
+if errors:
+    raise RuntimeError(f'Incoming database has {len(errors)} foreign-key error(s)')
+print('incoming database verified')
+PY
 
 mv '$NT_DEPLOY_DB' '$NT_DEPLOY_DB.replaced-$STAMP'
 rm -f '$NT_DEPLOY_DB-wal' '$NT_DEPLOY_DB-shm'
 mv '$REMOTE_INCOMING' '$NT_DEPLOY_DB'
 chmod 600 '$NT_DEPLOY_DB'
 sudo systemctl start '$NT_DEPLOY_SERVICE'
+service_stopped=0
+trap - EXIT
 sleep 3
 systemctl is-active '$NT_DEPLOY_SERVICE'"
 

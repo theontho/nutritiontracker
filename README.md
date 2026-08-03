@@ -157,8 +157,21 @@ bin/db-push data/nutrition.db       # replace the food catalog, keeping diary da
 `bin/db-push` is the safe way to ship a rebuilt catalog: a rebuilt database
 contains no diary, weight or recipe records, so the script backs up the live
 database, merges the personal tables into the incoming file with
-`scripts/migrate_personal_data.py`, and only then swaps it in. The previous
-database is kept alongside the new one.
+`scripts/migrate_personal_data.py`, refreshes every diary and recipe nutrient
+snapshot from the incoming catalog, verifies foreign keys, and only then swaps
+it in. This applies newly available nutrient detail to foods, supplements,
+medications, custom items, and public-database items without copying the food
+catalog into downstream viewers. Each snapshot stores a deterministic
+item-content version, so later pushes skip unchanged items and refresh only
+entries and recipes whose food content actually changed. The previous database
+is kept alongside the new one.
+
+After a direct correction to food rows outside a catalog push, refresh saved
+snapshots explicitly:
+
+```bash
+python -m scripts.recompute_nutrient_snapshots --db data/nutrition.db
+```
 
 ### Container hosts (Kamal)
 
