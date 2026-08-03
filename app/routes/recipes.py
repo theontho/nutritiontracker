@@ -39,6 +39,7 @@ def _resolve_ingredients(
             "amount": ing.amount,
             "unit": ing.unit,
             "grams": conversion.grams,
+            "base_amount": conversion.amount_in(food.get("base_unit", "g")),
         })
     return resolved
 

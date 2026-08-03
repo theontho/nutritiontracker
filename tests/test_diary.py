@@ -164,8 +164,20 @@ def test_search_by_food_name_does_not_return_other_users_entries(diary_repo, ban
 
 def test_computed_nutrients_preserve_unknown_and_measured_zero():
     nutrients = compute_entry_nutrients(
-        {"protein_g": 0, "vitamin_k_ug": None}, grams=100
+        {"protein_g": 0, "vitamin_k_ug": None}, base_amount=100
     )
 
     assert nutrients["protein_g"] == 0
     assert nutrients["vitamin_k_ug"] is None
+
+
+def test_computed_nutrients_use_the_foods_native_base_quantity():
+    food = {
+        "base_quantity": 100,
+        "base_unit": "ml",
+        "calories_kcal": 30,
+    }
+
+    nutrients = compute_entry_nutrients(food, base_amount=100)
+
+    assert nutrients["calories_kcal"] == 30

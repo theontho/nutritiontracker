@@ -49,7 +49,9 @@ def create_entry(request: Request, date: str, body: DiaryEntryCreate):
         serving_quantity=food.get("serving_quantity"),
         serving_unit=food.get("serving_unit"),
     )
-    nutrients = compute_entry_nutrients(food, conversion.grams)
+    nutrients = compute_entry_nutrients(
+        food, conversion.amount_in(food.get("base_unit", "g"))
+    )
     snapshot = build_food_snapshot(food)
 
     diary_repo = _diary_repo(request)
@@ -83,7 +85,9 @@ def update_entry(request: Request, entry_id: int, body: DiaryEntryUpdate):
             serving_unit=food.get("serving_unit"),
         )
         updates["grams"] = conversion.grams
-        updates["nutrients_total"] = compute_entry_nutrients(food, conversion.grams)
+        updates["nutrients_total"] = compute_entry_nutrients(
+            food, conversion.amount_in(food.get("base_unit", "g"))
+        )
 
     diary_repo.update(entry_id, **updates)
     return diary_repo.get(entry_id)
