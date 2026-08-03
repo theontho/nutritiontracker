@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import Annotated, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AfterValidator, BaseModel, Field, field_validator
 
 
 def _require_content(value: str, field: str) -> str:
@@ -29,10 +29,15 @@ def _validate_iso_date(value: str) -> str:
     from datetime import date as date_cls
 
     try:
-        date_cls.fromisoformat(value)
+        parsed = date_cls.fromisoformat(value)
     except ValueError:
         raise ValueError("date must be YYYY-MM-DD") from None
+    if parsed.isoformat() != value:
+        raise ValueError("date must be YYYY-MM-DD")
     return value
+
+
+CanonicalDate = Annotated[str, AfterValidator(_validate_iso_date)]
 
 
 class EventTypeCreate(BaseModel):
@@ -62,9 +67,9 @@ class EventTypeUpdate(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def _name_has_content(cls, value: Optional[str]) -> Optional[str]:
+    def _name_has_content(cls, value: Optional[str]) -> str:
         if value is None:
-            return None
+            raise ValueError("name cannot be null")
         return _require_content(value, "name")
 
 
@@ -82,16 +87,11 @@ class EventType(BaseModel):
 
 class EventCreate(BaseModel):
     event_type_id: int
-    date: str
+    date: CanonicalDate
     at: Optional[str] = None
     value: Optional[float] = None
     unit: Optional[str] = Field(default=None, max_length=50)
     notes: Optional[str] = None
-
-    @field_validator("date")
-    @classmethod
-    def _date_is_iso(cls, value: str) -> str:
-        return _validate_iso_date(value)
 
     @field_validator("at")
     @classmethod
@@ -100,7 +100,7 @@ class EventCreate(BaseModel):
 
 
 class EventUpdate(BaseModel):
-    date: Optional[str] = None
+    date: Optional[CanonicalDate] = None
     at: Optional[str] = None
     value: Optional[float] = None
     unit: Optional[str] = Field(default=None, max_length=50)
@@ -108,8 +108,10 @@ class EventUpdate(BaseModel):
 
     @field_validator("date")
     @classmethod
-    def _date_is_iso(cls, value: Optional[str]) -> Optional[str]:
-        return None if value is None else _validate_iso_date(value)
+    def _date_cannot_be_null(cls, value: Optional[str]) -> str:
+        if value is None:
+            raise ValueError("date cannot be null")
+        return value
 
     @field_validator("at")
     @classmethod

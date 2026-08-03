@@ -1,9 +1,11 @@
 import sqlite3
+from math import isfinite
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from app.auth import current_user_id
 from app.models.event import (
+    CanonicalDate,
     Event,
     EventCreate,
     EventSummaryRow,
@@ -23,6 +25,11 @@ def _types(request: Request) -> EventTypeRepository:
 
 def _events(request: Request) -> EventRepository:
     return EventRepository(request.app.state.db)
+
+
+def _reject_non_finite_value(value: float | None) -> None:
+    if value is not None and not isfinite(value):
+        raise HTTPException(status_code=422, detail="Event value must be finite")
 
 
 # Literal segments are declared before /{event_id} so that "types" and
@@ -125,8 +132,12 @@ def delete_event_type(
             summary="Summarize events by type")
 def summarize_events(
     request: Request,
-    start: str | None = Query(default=None, description="Earliest date, YYYY-MM-DD"),
-    end: str | None = Query(default=None, description="Latest date, YYYY-MM-DD"),
+    start: CanonicalDate | None = Query(
+        default=None, description="Earliest date, YYYY-MM-DD"
+    ),
+    end: CanonicalDate | None = Query(
+        default=None, description="Latest date, YYYY-MM-DD"
+    ),
 ):
     """Count and total events per type over a date range.
 
@@ -150,6 +161,7 @@ def create_event(request: Request, body: EventCreate):
     reading stays interpretable if the type is edited later.
     """
     user_id = current_user_id(request)
+    _reject_non_finite_value(body.value)
     event_type = _types(request).get(body.event_type_id, user_id=user_id)
     if event_type is None:
         raise HTTPException(status_code=404, detail="Event type not found")
@@ -173,8 +185,12 @@ def create_event(request: Request, body: EventCreate):
 @router.get("", response_model=list[Event], summary="List events")
 def list_events(
     request: Request,
-    start: str | None = Query(default=None, description="Earliest date, YYYY-MM-DD"),
-    end: str | None = Query(default=None, description="Latest date, YYYY-MM-DD"),
+    start: CanonicalDate | None = Query(
+        default=None, description="Earliest date, YYYY-MM-DD"
+    ),
+    end: CanonicalDate | None = Query(
+        default=None, description="Latest date, YYYY-MM-DD"
+    ),
     event_type_id: int | None = Query(default=None, description="Filter by type"),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
@@ -207,6 +223,8 @@ def update_event(request: Request, event_id: int, body: EventUpdate):
     updates = body.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
+    if "value" in updates:
+        _reject_non_finite_value(updates["value"])
     if repo.get(event_id, user_id=user_id) is None:
         raise HTTPException(status_code=404, detail="Event not found")
     repo.update(event_id, user_id=user_id, **updates)

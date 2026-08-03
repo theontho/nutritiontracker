@@ -133,6 +133,59 @@ def test_a_malformed_date_is_rejected(client):
     assert response.status_code == 422
 
 
+@pytest.mark.parametrize("date", ["20260802", "2026-W31-7"])
+def test_noncanonical_iso_dates_are_rejected(client, date):
+    event_type = _make_type(client)
+
+    response = client.post(
+        "/events", json={"event_type_id": event_type["id"], "date": date}
+    )
+
+    assert response.status_code == 422
+
+
+def test_date_range_filters_require_canonical_dates(client):
+    assert client.get("/events?start=20260802").status_code == 422
+    assert client.get("/events/summary?end=2026-W31-7").status_code == 422
+
+
+def test_null_updates_to_required_fields_are_rejected(client):
+    event_type = _make_type(client)
+    event = client.post(
+        "/events",
+        json={"event_type_id": event_type["id"], "date": "2026-08-02"},
+    ).json()
+
+    type_response = client.patch(
+        f"/events/types/{event_type['id']}", json={"name": None}
+    )
+    event_response = client.patch(f"/events/{event['id']}", json={"date": None})
+
+    assert type_response.status_code == 422
+    assert event_response.status_code == 422
+    assert client.get(f"/events/types/{event_type['id']}").json()["name"] == (
+        "Red light therapy"
+    )
+    assert client.get(f"/events/{event['id']}").json()["date"] == "2026-08-02"
+
+
+def test_non_finite_event_values_are_rejected(client):
+    event_type = _make_type(client)
+
+    response = client.post(
+        "/events",
+        content=(
+            '{"event_type_id":'
+            + str(event_type["id"])
+            + ',"date":"2026-08-02","value":1e309}'
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 422
+    assert client.get("/events").json() == []
+
+
 def test_deleting_a_type_with_events_is_refused_then_cascades(client):
     event_type = _make_type(client, name="Breathwork")
     client.post(

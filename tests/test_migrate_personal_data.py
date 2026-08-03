@@ -241,3 +241,42 @@ def test_copies_owned_foods_even_when_no_diary_references_them(tmp_path):
     ).fetchone()
     check.close()
     assert row == ("Private", 1)
+
+
+def test_migrates_event_types_and_history(tmp_path):
+    source_path = tmp_path / "source.db"
+    target_path = tmp_path / "target.db"
+    source = _connection(source_path)
+    type_id = source.execute(
+        """INSERT INTO event_types (user_id, name, unit)
+           VALUES (1, 'Sauna', 'minutes')"""
+    ).lastrowid
+    source.execute(
+        """INSERT INTO events
+           (user_id, event_type_id, date, at, value, unit, notes)
+           VALUES (1, ?, '2026-08-02', '19:30:00', 20, 'minutes', 'hot')""",
+        (type_id,),
+    )
+    source.commit()
+    source.close()
+    target = _connection(target_path)
+    target.close()
+
+    copied = migrate_personal_data(source_path, target_path)
+
+    check = sqlite3.connect(target_path)
+    check.row_factory = sqlite3.Row
+    event = check.execute(
+        """SELECT e.user_id, e.date, e.value, e.unit, t.name
+           FROM events e JOIN event_types t ON t.id = e.event_type_id"""
+    ).fetchone()
+    check.close()
+    assert copied["event_types"] == 1
+    assert copied["events"] == 1
+    assert dict(event) == {
+        "user_id": 1,
+        "date": "2026-08-02",
+        "value": 20.0,
+        "unit": "minutes",
+        "name": "Sauna",
+    }

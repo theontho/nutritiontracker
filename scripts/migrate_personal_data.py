@@ -23,6 +23,8 @@ USDA_SOURCES = (
 
 
 PERSONAL_TABLES = (
+    "event_types",
+    "events",
     "diary_entries",
     "recipes",
     "weight_entries",
