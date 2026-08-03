@@ -24,6 +24,14 @@ def test_normalize_usda_food():
             {"nutrientId": 1183, "value": 2.0},  # Menaquinone-4
             {"nutrientId": 1190, "value": 19.0},  # Folate DFE
             {"nutrientId": 1194, "value": 3.0},  # Free choline
+            {"nutrientId": 1051, "value": 74.9},  # Water
+            {"nutrientId": 1010, "value": 2.4},  # Sucrose
+            {"nutrientId": 1082, "value": 0.7},  # Soluble fiber
+            {"nutrientId": 1099, "value": 2.2},  # Fluoride
+            {"nutrientId": 1102, "value": 4.0},  # Molybdenum
+            {"nutrientId": 1272, "value": 0.03},  # DHA
+            {"nutrientId": 1404, "value": 0.04},  # ALA
+            {"nutrientId": 1213, "value": 0.08},  # Leucine
         ],
     }
     food = normalize_usda_food(raw)
@@ -44,6 +52,15 @@ def test_normalize_usda_food():
     assert food["menaquinone_4_ug"] == 2.0
     assert food["folate_dfe_ug"] == 19.0
     assert food["choline_free_mg"] == 3.0
+    assert food["water_g"] == 74.9
+    assert food["sucrose_g"] == 2.4
+    assert food["soluble_fiber_g"] == 0.7
+    assert food["fluoride_ug"] == 2.2
+    assert food["molybdenum_ug"] == 4.0
+    assert food["dha_g"] == 0.03
+    assert food["alpha_linolenic_acid_g"] == 0.04
+    assert food["leucine_g"] == 0.08
+    assert food.get("menaquinone_7_ug") is None
 
 
 def test_normalize_handles_missing_nutrients():

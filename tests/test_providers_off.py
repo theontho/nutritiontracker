@@ -107,3 +107,27 @@ def test_normalize_falls_back_to_the_unit_off_stores():
     assert food["calcium_mg"] == pytest.approx(14.0845)
     assert food["vitamin_d_ug"] == pytest.approx(2.5)
     assert food["sodium_mg"] == pytest.approx(41)
+
+
+def test_mk7_is_only_populated_from_an_explicit_mk7_value():
+    food = normalize_off_food(
+        {
+            "code": "mk7",
+            "product_name": "Fermented food",
+            "nutriments": {
+                "vitamin-k_100g": 0.00012,
+                "menaquinone-7_100g": 0.000045,
+            },
+        }
+    )
+    assert food["vitamin_k_ug"] == pytest.approx(120)
+    assert food["menaquinone_7_ug"] == pytest.approx(45)
+
+    total_only = normalize_off_food(
+        {
+            "code": "k",
+            "product_name": "Leafy green",
+            "nutriments": {"vitamin-k_100g": 0.00012},
+        }
+    )
+    assert total_only["menaquinone_7_ug"] is None

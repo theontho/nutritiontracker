@@ -6,6 +6,7 @@ import pytest
 from app.providers.cronometer import (
     FIELD_NUTRIENTS,
     PUBLISHED_UNITS,
+    UNREPORTED_FIELDS,
     check_nutrient_units,
     normalize_cronometer_food,
     parse_source,
@@ -33,6 +34,11 @@ ACAI = {
         {"id": 319, "amount": 2.5, "type": "PRIMARY"},
         {"id": 321, "amount": 42, "type": "PRIMARY"},
         {"id": 342, "amount": 0.7, "type": "PRIMARY"},
+        {"id": 255, "amount": 85.1, "type": "PRIMARY"},
+        {"id": 209, "amount": 3.2, "type": "PRIMARY"},
+        {"id": 313, "amount": 4.5, "type": "PRIMARY"},
+        {"id": 501, "amount": 0.01, "type": "PRIMARY"},
+        {"id": 851, "amount": 0.06, "type": "PRIMARY"},
     ],
 }
 
@@ -77,6 +83,8 @@ def _write_export(tmp_path, documents, *, units=None, referenced=None):
 
 def test_every_mapped_nutrient_declares_a_unit():
     assert set(FIELD_NUTRIENTS.values()) <= set(PUBLISHED_UNITS)
+    assert len(FIELD_NUTRIENTS) == 95
+    assert "menaquinone_7_ug" in UNREPORTED_FIELDS
 
 
 def test_source_codes_are_registered():
@@ -94,6 +102,11 @@ def test_values_are_taken_per_100g_unchanged():
     assert food["retinol_ug"] == 2.5
     assert food["beta_carotene_ug"] == 42
     assert food["gamma_tocopherol_mg"] == 0.7
+    assert food["water_g"] == 85.1
+    assert food["starch_g"] == 3.2
+    assert food["fluoride_ug"] == 4.5
+    assert food["tryptophan_g"] == 0.01
+    assert food["alpha_linolenic_acid_g"] == 0.06
     assert food["base_quantity"] == 100
     assert food["base_unit"] == "g"
 

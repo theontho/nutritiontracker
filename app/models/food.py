@@ -6,18 +6,44 @@ from app.sources import SourceType
 
 
 class NutrientsPer100(BaseModel):
+    water_g: float | None = None
+    ash_g: float | None = None
+    alcohol_g: float | None = None
+    beta_hydroxybutyrate_g: float | None = None
+    oxalate_mg: float | None = None
+    phytate_mg: float | None = None
     calories_kcal: float | None = None
     protein_g: float | None = None
     carbs_g: float | None = None
+    net_carbs_g: float | None = None
+    starch_g: float | None = None
     fat_g: float | None = None
     sugar_g: float | None = None
+    allulose_g: float | None = None
+    fructose_g: float | None = None
+    galactose_g: float | None = None
+    glucose_g: float | None = None
+    lactose_g: float | None = None
+    maltose_g: float | None = None
+    sucrose_g: float | None = None
+    sugar_alcohol_g: float | None = None
     added_sugar_g: float | None = None
     saturated_fat_g: float | None = None
     trans_fat_g: float | None = None
     monounsaturated_fat_g: float | None = None
     polyunsaturated_fat_g: float | None = None
+    omega_3_g: float | None = None
+    alpha_linolenic_acid_g: float | None = None
+    dha_g: float | None = None
+    epa_g: float | None = None
+    omega_6_g: float | None = None
+    arachidonic_acid_g: float | None = None
+    linoleic_acid_g: float | None = None
     fiber_g: float | None = None
+    insoluble_fiber_g: float | None = None
+    soluble_fiber_g: float | None = None
     cholesterol_mg: float | None = None
+    phytosterol_mg: float | None = None
     caffeine_mg: float | None = None
     sodium_mg: float | None = None
     potassium_mg: float | None = None
@@ -30,7 +56,9 @@ class NutrientsPer100(BaseModel):
     manganese_mg: float | None = None
     selenium_ug: float | None = None
     chromium_ug: float | None = None
+    fluoride_ug: float | None = None
     iodine_ug: float | None = None
+    molybdenum_ug: float | None = None
     vitamin_a_ug: float | None = None
     retinol_ug: float | None = None
     beta_carotene_ug: float | None = None
@@ -63,6 +91,7 @@ class NutrientsPer100(BaseModel):
     vitamin_k_ug: float | None = None
     dihydrophylloquinone_ug: float | None = None
     menaquinone_4_ug: float | None = None
+    menaquinone_7_ug: float | None = None
     thiamin_mg: float | None = None
     riboflavin_mg: float | None = None
     vitamin_b6_mg: float | None = None
@@ -84,6 +113,25 @@ class NutrientsPer100(BaseModel):
     choline_phosphatidylcholine_mg: float | None = None
     choline_glycerophosphocholine_mg: float | None = None
     choline_sphingomyelin_mg: float | None = None
+    alanine_g: float | None = None
+    arginine_g: float | None = None
+    aspartic_acid_g: float | None = None
+    cystine_g: float | None = None
+    glutamic_acid_g: float | None = None
+    glycine_g: float | None = None
+    histidine_g: float | None = None
+    hydroxyproline_g: float | None = None
+    isoleucine_g: float | None = None
+    leucine_g: float | None = None
+    lysine_g: float | None = None
+    methionine_g: float | None = None
+    phenylalanine_g: float | None = None
+    proline_g: float | None = None
+    serine_g: float | None = None
+    threonine_g: float | None = None
+    tryptophan_g: float | None = None
+    tyrosine_g: float | None = None
+    valine_g: float | None = None
 
 
 NUTRIENT_FIELDS = tuple(NutrientsPer100.model_fields)
@@ -196,18 +244,44 @@ class FoodOut(BaseModel):
     base_unit: str = "g"
     density_g_per_ml: float | None = None
     # Nutrients (flat, as stored in DB)
+    water_g: float | None = None
+    ash_g: float | None = None
+    alcohol_g: float | None = None
+    beta_hydroxybutyrate_g: float | None = None
+    oxalate_mg: float | None = None
+    phytate_mg: float | None = None
     calories_kcal: float | None = None
     protein_g: float | None = None
     carbs_g: float | None = None
+    net_carbs_g: float | None = None
+    starch_g: float | None = None
     fat_g: float | None = None
     sugar_g: float | None = None
+    allulose_g: float | None = None
+    fructose_g: float | None = None
+    galactose_g: float | None = None
+    glucose_g: float | None = None
+    lactose_g: float | None = None
+    maltose_g: float | None = None
+    sucrose_g: float | None = None
+    sugar_alcohol_g: float | None = None
     added_sugar_g: float | None = None
     saturated_fat_g: float | None = None
     trans_fat_g: float | None = None
     monounsaturated_fat_g: float | None = None
     polyunsaturated_fat_g: float | None = None
+    omega_3_g: float | None = None
+    alpha_linolenic_acid_g: float | None = None
+    dha_g: float | None = None
+    epa_g: float | None = None
+    omega_6_g: float | None = None
+    arachidonic_acid_g: float | None = None
+    linoleic_acid_g: float | None = None
     fiber_g: float | None = None
+    insoluble_fiber_g: float | None = None
+    soluble_fiber_g: float | None = None
     cholesterol_mg: float | None = None
+    phytosterol_mg: float | None = None
     caffeine_mg: float | None = None
     sodium_mg: float | None = None
     potassium_mg: float | None = None
@@ -220,7 +294,9 @@ class FoodOut(BaseModel):
     manganese_mg: float | None = None
     selenium_ug: float | None = None
     chromium_ug: float | None = None
+    fluoride_ug: float | None = None
     iodine_ug: float | None = None
+    molybdenum_ug: float | None = None
     vitamin_a_ug: float | None = None
     retinol_ug: float | None = None
     beta_carotene_ug: float | None = None
@@ -253,6 +329,7 @@ class FoodOut(BaseModel):
     vitamin_k_ug: float | None = None
     dihydrophylloquinone_ug: float | None = None
     menaquinone_4_ug: float | None = None
+    menaquinone_7_ug: float | None = None
     thiamin_mg: float | None = None
     riboflavin_mg: float | None = None
     vitamin_b6_mg: float | None = None
@@ -274,6 +351,25 @@ class FoodOut(BaseModel):
     choline_phosphatidylcholine_mg: float | None = None
     choline_glycerophosphocholine_mg: float | None = None
     choline_sphingomyelin_mg: float | None = None
+    alanine_g: float | None = None
+    arginine_g: float | None = None
+    aspartic_acid_g: float | None = None
+    cystine_g: float | None = None
+    glutamic_acid_g: float | None = None
+    glycine_g: float | None = None
+    histidine_g: float | None = None
+    hydroxyproline_g: float | None = None
+    isoleucine_g: float | None = None
+    leucine_g: float | None = None
+    lysine_g: float | None = None
+    methionine_g: float | None = None
+    phenylalanine_g: float | None = None
+    proline_g: float | None = None
+    serine_g: float | None = None
+    threonine_g: float | None = None
+    tryptophan_g: float | None = None
+    tyrosine_g: float | None = None
+    valine_g: float | None = None
     created_at: datetime
     updated_at: datetime
 
