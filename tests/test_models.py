@@ -42,6 +42,8 @@ def test_food_create_rejects_invalid_source():
         {"base_unit": "oz"},
         {"density_g_per_ml": 0},
         {"density_g_per_ml": -1},
+        {"base_quantity": float("inf")},
+        {"density_g_per_ml": float("inf")},
     ),
 )
 def test_food_create_rejects_invalid_base_measurements(field):

@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 
 from app.config import settings
+from app.services.food_references import replace_food_references
 from app.sources import FOOD_SOURCES, PRIVATE_SOURCE_CODES
 
 
@@ -352,6 +353,25 @@ def seed_food_sources(conn: sqlite3.Connection) -> None:
 def repair_food_ownership_indexes(conn: sqlite3.Connection) -> None:
     """Idempotently repair databases initialized by pre-fix branch revisions."""
     conn.execute("DROP INDEX IF EXISTS idx_foods_source_code_unique")
+    placeholders = ", ".join("?" for _ in PRIVATE_SOURCE_CODES)
+    collisions = conn.execute(
+        f"""SELECT legacy.id, owned.id
+            FROM foods legacy
+            JOIN foods owned
+              ON owned.source = legacy.source
+             AND owned.source_code = legacy.source_code
+             AND owned.owner_user_id = ?
+            WHERE legacy.owner_user_id IS NULL
+              AND legacy.source_code IS NOT NULL
+              AND legacy.source IN ({placeholders})""",
+        (settings.default_user_id, *sorted(PRIVATE_SOURCE_CODES)),
+    ).fetchall()
+    for legacy_id, owned_id in collisions:
+        replace_food_references(
+            conn, old_food_id=legacy_id, new_food_id=owned_id
+        )
+        conn.execute("DELETE FROM foods WHERE id = ?", (legacy_id,))
+
     placeholders = ", ".join("?" for _ in PRIVATE_SOURCE_CODES)
     conn.execute(
         f"""UPDATE foods SET owner_user_id = ?

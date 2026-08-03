@@ -11,6 +11,7 @@ import os
 from alembic import op
 
 from app.services.diary import compute_entry_nutrients
+from app.services.food_references import replace_food_references
 from app.services.recipe_nutrition import compute_recipe_nutrients
 from app.services.unit_conversion import convert_to_grams
 
@@ -115,6 +116,30 @@ def _repair_recipe_totals(connection) -> None:
 def upgrade() -> None:
     default_user_id = _default_user_id()
     sources = ", ".join(f"'{source}'" for source in PRIVATE_SOURCE_CODES)
+    connection = op.get_bind()
+    collisions = connection.exec_driver_sql(
+        f"""SELECT legacy.id AS legacy_id, owned.id AS owned_id
+            FROM foods legacy
+            JOIN foods owned
+              ON owned.source = legacy.source
+             AND owned.source_code = legacy.source_code
+             AND owned.owner_user_id = ?
+            WHERE legacy.owner_user_id IS NULL
+              AND legacy.source_code IS NOT NULL
+              AND legacy.source IN ({sources})""",
+        (default_user_id,),
+    ).mappings()
+    raw_connection = connection.connection.driver_connection
+    for collision in list(collisions):
+        replace_food_references(
+            raw_connection,
+            old_food_id=collision["legacy_id"],
+            new_food_id=collision["owned_id"],
+        )
+        raw_connection.execute(
+            "DELETE FROM foods WHERE id = ?", (collision["legacy_id"],)
+        )
+
     op.execute(
         f"""UPDATE foods SET owner_user_id = {default_user_id}
             WHERE owner_user_id IS NULL AND source IN ({sources})"""
@@ -131,7 +156,6 @@ def upgrade() -> None:
            WHERE source_code IS NOT NULL AND owner_user_id IS NOT NULL"""
     )
 
-    connection = op.get_bind()
     _repair_diary_totals(connection)
     _repair_recipe_totals(connection)
 

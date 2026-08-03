@@ -1,12 +1,14 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.sources import SourceType
 
 
 class NutrientsPer100(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+
     calories_kcal: float | None = None
     protein_g: float | None = None
     carbs_g: float | None = None
@@ -65,6 +67,8 @@ __all__ = [
 
 
 class FoodCreate(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+
     source: Literal["custom"] = "custom"
     source_code: str | None = None
     name: str
@@ -97,6 +101,8 @@ class Food(FoodCreate):
 
 
 class FoodUpdate(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+
     name: str | None = None
     brand: str | None = None
     barcode: str | None = None

@@ -3,6 +3,7 @@ import sqlite3
 from collections.abc import Sequence
 
 from app.models.food import NUTRIENT_FIELDS
+from app.services.food_references import replace_food_references
 
 DATASET_SPECIFIC_USDA_SOURCES = frozenset(
     {"usda_fndds", "usda_foundation", "usda_sr_legacy", "usda_branded"}
@@ -103,7 +104,8 @@ class FoodRepository:
             ).fetchone()
             if legacy is not None:
                 if current is not None and current["id"] != legacy["id"]:
-                    self._replace_food_references(
+                    replace_food_references(
+                        self.conn,
                         old_food_id=current["id"], new_food_id=legacy["id"]
                     )
                     self.conn.execute(
@@ -141,28 +143,6 @@ class FoodRepository:
             values,
         )
         return cur.fetchone()[0]
-
-    def _replace_food_references(
-        self, *, old_food_id: int, new_food_id: int
-    ) -> None:
-        self.conn.execute(
-            "UPDATE diary_entries SET food_id = ? WHERE food_id = ?",
-            (new_food_id, old_food_id),
-        )
-        for recipe in self.conn.execute(
-            "SELECT id, ingredients FROM recipes ORDER BY id"
-        ):
-            ingredients = json.loads(recipe["ingredients"])
-            changed = False
-            for ingredient in ingredients:
-                if ingredient.get("food_id") == old_food_id:
-                    ingredient["food_id"] = new_food_id
-                    changed = True
-            if changed:
-                self.conn.execute(
-                    "UPDATE recipes SET ingredients = ? WHERE id = ?",
-                    (json.dumps(ingredients), recipe["id"]),
-                )
 
     def get(self, food_id: int, *, user_id: int | None = None) -> dict | None:
         query = "SELECT * FROM foods WHERE id = ?"

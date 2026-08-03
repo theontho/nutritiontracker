@@ -136,6 +136,16 @@ def test_create_custom_food(client, db):
     assert r.json()["name"] == "My Food"
 
 
+def test_create_food_rejects_non_finite_base_measurements(client):
+    response = client.post(
+        "/foods",
+        content='{"name":"Invalid","base_quantity":1e309}',
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 422
+
+
 def test_update_custom_food(client, db):
     fid = _seed_food(db, "Old")
     r = client.patch(f"/foods/{fid}", json={"name": "New"})

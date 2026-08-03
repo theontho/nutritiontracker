@@ -1,8 +1,11 @@
 from contextlib import asynccontextmanager
+from math import isfinite
 from pathlib import Path
 
 from fastapi import Depends, FastAPI
-from fastapi.responses import FileResponse
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
 from setproctitle import setproctitle
 
 from app.auth import require_auth, require_multi_user
@@ -58,6 +61,24 @@ Designed to be called by AI agents to log and query nutrition data.
 """,
     lifespan=lifespan,
 )
+
+
+def _json_safe_validation_detail(value):
+    if isinstance(value, float) and not isfinite(value):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: _json_safe_validation_detail(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe_validation_detail(item) for item in value]
+    return value
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(request, exception):
+    del request
+    detail = _json_safe_validation_detail(jsonable_encoder(exception.errors()))
+    return JSONResponse(status_code=422, content={"detail": detail})
+
 
 _auth = [Depends(require_auth)]
 app.include_router(foods_router, dependencies=_auth)
