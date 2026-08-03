@@ -15,6 +15,11 @@ def test_search_foods(client, db):
     assert len(r.json()) == 2
 
 
+def test_search_rejects_extreme_pagination(client):
+    assert client.get("/foods/search?q=x&limit=101").status_code == 422
+    assert client.get("/foods/search?q=x&offset=10001").status_code == 422
+
+
 def test_get_food(client, db):
     fid = _seed_food(db, "Banana", calories_kcal=89)
     r = client.get(f"/foods/{fid}")

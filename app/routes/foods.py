@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from app.auth import current_user_id
 from app.models.food import (
@@ -10,7 +10,11 @@ from app.models.food import (
 )
 from app.providers.open_food_facts import fetch_off_by_barcode
 from app.repositories.foods import FoodRepository
-from app.services.food_search import FoodSearchService
+from app.services.food_search import (
+    MAX_SEARCH_LIMIT,
+    MAX_SEARCH_OFFSET,
+    FoodSearchService,
+)
 
 router = APIRouter(prefix="/foods", tags=["foods"])
 
@@ -43,7 +47,11 @@ def _search_svc(request: Request) -> FoodSearchService:
 
 @router.get("/search", response_model=list[FoodOut], summary="Search foods")
 def search_foods(
-    request: Request, q: str, source: str = "all", limit: int = 20, offset: int = 0
+    request: Request,
+    q: str,
+    source: str = "all",
+    limit: int = Query(default=20, ge=1, le=MAX_SEARCH_LIMIT),
+    offset: int = Query(default=0, ge=0, le=MAX_SEARCH_OFFSET),
 ):
     """Search the food database by name or brand. Supports prefix matching ('chick' matches 'chicken breast').
 

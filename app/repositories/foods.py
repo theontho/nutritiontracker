@@ -176,6 +176,7 @@ class FoodRepository:
     def search(
         self, query: str, *, sources: Sequence[str] | None = None,
         user_id: int | None = None, limit: int = 20, offset: int = 0,
+        quality_weight: float = 0.0, max_quality_tier: int = 5,
     ) -> list[dict]:
         """Full-text matches ordered by relevance, each carrying its bm25 score.
 
@@ -196,14 +197,56 @@ class FoodRepository:
         if user_id is not None:
             filters += " AND (f.owner_user_id IS NULL OR f.owner_user_id = ?)"
             filter_values.append(user_id)
+        known_nutrients = " + ".join(
+            f"(f.{field} IS NOT NULL)" for field in NUTRIENT_FIELDS
+        )
         rows = self.conn.execute(
-            """SELECT f.*, bm25(foods_fts) AS relevance
-               FROM foods_fts fts
-               JOIN foods f ON f.id = fts.rowid
-               WHERE foods_fts MATCH ?""" + filters + """
-               ORDER BY rank
-               LIMIT ? OFFSET ?""",
-            (fts_query, *filter_values, limit, offset),
+            """
+            WITH matched AS (
+                SELECT f.*, bm25(foods_fts) AS relevance,
+                       MIN(s.tier, ?) AS ranking_tier,
+                       """ + known_nutrients + """ AS known_nutrients,
+                       lower(trim(f.name)) AS normalized_name
+                FROM foods_fts fts
+                JOIN foods f ON f.id = fts.rowid
+                JOIN food_sources s ON s.code = f.source
+                WHERE foods_fts MATCH ?""" + filters + """
+            ),
+            barcode_ranked AS (
+                SELECT *,
+                       row_number() OVER (
+                           PARTITION BY CASE
+                               WHEN barcode IS NULL OR barcode = ''
+                               THEN 'id:' || id
+                               ELSE 'barcode:' || barcode
+                           END
+                           ORDER BY ranking_tier, known_nutrients DESC, id
+                       ) AS barcode_rank
+                FROM matched
+            ),
+            name_ranked AS (
+                SELECT *,
+                       row_number() OVER (
+                           PARTITION BY normalized_name
+                           ORDER BY ranking_tier, known_nutrients DESC, id
+                       ) AS name_rank
+                FROM barcode_ranked
+                WHERE barcode_rank = 1
+            )
+            SELECT *
+            FROM name_ranked
+            WHERE name_rank = 1
+            ORDER BY relevance + ? * ranking_tier, known_nutrients DESC, id
+            LIMIT ? OFFSET ?
+            """,
+            (
+                max_quality_tier,
+                fts_query,
+                *filter_values,
+                quality_weight,
+                limit,
+                offset,
+            ),
         ).fetchall()
         return [self._deserialize(r) for r in rows]
 
@@ -246,6 +289,14 @@ class FoodRepository:
         if row is None:
             return None
         food = dict(row)
+        for field in (
+            "ranking_tier",
+            "known_nutrients",
+            "normalized_name",
+            "barcode_rank",
+            "name_rank",
+        ):
+            food.pop(field, None)
         for field in ("allergens_tags", "dietary_tags", "categories_tags", "labels_tags", "countries_tags"):
             food[field] = json.loads(food[field])
         return food

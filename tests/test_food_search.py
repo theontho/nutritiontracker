@@ -1,3 +1,5 @@
+import pytest
+
 from app.repositories.foods import FoodRepository
 from app.services.food_search import FoodSearchService
 
@@ -119,7 +121,7 @@ def test_source_filter_still_restricts_results(db):
     assert [f["source"] for f in results] == ["open_food_facts"]
 
 
-def test_paging_reaches_past_the_candidate_ceiling(db):
+def test_paging_reaches_past_the_candidate_ceiling(db, monkeypatch):
     """A deep page must not come back empty while matches remain.
 
     The candidate window used to be capped at a fixed ceiling, so `offset`
@@ -132,9 +134,18 @@ def test_paging_reaches_past_the_candidate_ceiling(db):
         repo.create(source="open_food_facts", name=f"Apple item {i}",
                     source_code=f"b{i}", calories_kcal=46)
     svc = FoodSearchService(repo)
+    batch_sizes = []
+    search = repo.search
+
+    def recording_search(*args, **kwargs):
+        batch_sizes.append(kwargs["limit"])
+        return search(*args, **kwargs)
+
+    monkeypatch.setattr(repo, "search", recording_search)
 
     assert len(svc.search("apple", limit=20, offset=1100)) == 20
     assert svc.search("apple", limit=20, offset=1200) == []
+    assert max(batch_sizes) == 20
 
 
 def test_paging_does_not_repeat_or_skip_foods(db):
@@ -156,3 +167,39 @@ def test_paging_does_not_repeat_or_skip_foods(db):
     # 45 distinct varieties plus the one surviving "Apple Juice" duplicate.
     assert len(seen) == len(set(seen))
     assert len(seen) == 46
+
+
+def test_tier_adjustment_happens_before_candidate_truncation(db):
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+    for i in range(600):
+        repo.create(
+            source="open_food_facts",
+            source_code=f"label-{i}",
+            name="Spinach",
+            calories_kcal=23,
+        )
+    repo.create(
+        source="usda_fndds",
+        source_code="reference",
+        name="Spinach",
+        calories_kcal=23,
+        vitamin_k_ug=482.9,
+    )
+
+    results = FoodSearchService(repo).search("spinach", limit=5)
+
+    assert len(results) == 1
+    assert results[0]["source"] == "usda_fndds"
+
+
+@pytest.mark.parametrize(
+    ("limit", "offset"),
+    [(0, 0), (101, 0), (20, -1), (20, 10_001)],
+)
+def test_search_rejects_unbounded_pagination(db, limit, offset):
+    repo = FoodRepository(db)
+    repo.ensure_fts()
+
+    with pytest.raises(ValueError, match="must be between"):
+        FoodSearchService(repo).search("apple", limit=limit, offset=offset)
