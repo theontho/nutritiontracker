@@ -2,7 +2,7 @@
 
 import json
 from datetime import date, datetime
-from typing import Any
+from typing import Any, TextIO
 
 import click
 
@@ -66,6 +66,34 @@ def _query_params(values: tuple[str, ...]) -> list[tuple[str, str]]:
     return params
 
 
+def _json_object(
+    data: str | None,
+    data_file: TextIO | None,
+    *,
+    required: bool = True,
+) -> dict[str, Any] | None:
+    if data is not None and data_file is not None:
+        raise click.UsageError("--data and --data-file cannot be combined")
+    if data is None and data_file is None:
+        if required:
+            raise click.UsageError("Provide --data or --data-file")
+        return None
+    raw = data if data is not None else data_file.read()
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise click.BadParameter(
+            f"invalid JSON: {exc.msg}",
+            param_hint="'--data/--data-file'",
+        ) from exc
+    if not isinstance(value, dict):
+        raise click.BadParameter(
+            "must contain a JSON object",
+            param_hint="'--data/--data-file'",
+        )
+    return value
+
+
 @click.command()
 @click.pass_obj
 def health(context: CLIContext) -> None:
@@ -102,6 +130,56 @@ def query(context: CLIContext, path: str, params: tuple[str, ...]) -> None:
         )
     data = context.client.request("GET", path, params=_query_params(params))
     _echo_json(data)
+
+
+@click.command("request")
+@click.argument(
+    "method",
+    type=click.Choice(["GET", "POST", "PATCH", "DELETE"], case_sensitive=False),
+)
+@click.argument("path")
+@click.option(
+    "-p",
+    "--param",
+    "params",
+    multiple=True,
+    metavar="KEY=VALUE",
+    help="Query parameter; repeat for multiple or repeated values.",
+)
+@click.option("--data", help="JSON request object.")
+@click.option(
+    "--data-file",
+    type=click.File("r"),
+    help="Read the JSON request object from a file, or - for stdin.",
+)
+@click.pass_obj
+def api_request(
+    context: CLIContext,
+    method: str,
+    path: str,
+    params: tuple[str, ...],
+    data: str | None,
+    data_file: TextIO | None,
+) -> None:
+    """Call any API endpoint with an authenticated HTTP METHOD."""
+    if not path.startswith("/") or path.startswith("//"):
+        raise click.BadParameter(
+            "must start with one /, for example /events",
+            param_hint="'PATH'",
+        )
+    if "?" in path:
+        raise click.BadParameter(
+            "must not contain a query string; use --param KEY=VALUE",
+            param_hint="'PATH'",
+        )
+    body = _json_object(data, data_file, required=False)
+    result = context.client.request(
+        method.upper(),
+        path,
+        params=_query_params(params),
+        json=body,
+    )
+    _echo_json({"status": "ok"} if result is None else result)
 
 
 @click.group()
@@ -189,6 +267,56 @@ def food_sources(context: CLIContext) -> None:
             f"{source['code']}: {source['label']} "
             f"(tier {source['tier']}, {source['food_count']:,} foods)"
         )
+
+
+@foods.command("create")
+@click.option("--data", help="FoodCreate JSON object.")
+@click.option("--data-file", type=click.File("r"), help="Read FoodCreate JSON.")
+@click.pass_obj
+def create_food(
+    context: CLIContext,
+    data: str | None,
+    data_file: TextIO | None,
+) -> None:
+    """Create a custom food from JSON."""
+    result = context.client.request(
+        "POST",
+        "/foods",
+        json=_json_object(data, data_file),
+    )
+    _echo_json(result)
+
+
+@foods.command("update")
+@click.argument("food_id", type=int)
+@click.option("--data", help="FoodUpdate JSON object.")
+@click.option("--data-file", type=click.File("r"), help="Read FoodUpdate JSON.")
+@click.pass_obj
+def update_food(
+    context: CLIContext,
+    food_id: int,
+    data: str | None,
+    data_file: TextIO | None,
+) -> None:
+    """Update a custom food from JSON."""
+    result = context.client.request(
+        "PATCH",
+        f"/foods/{food_id}",
+        json=_json_object(data, data_file),
+    )
+    _echo_json(result)
+
+
+@foods.command("delete")
+@click.argument("food_id", type=int)
+@click.option("--yes", is_flag=True, help="Delete without confirmation.")
+@click.pass_obj
+def delete_food(context: CLIContext, food_id: int, yes: bool) -> None:
+    """Delete a custom food."""
+    if not yes:
+        click.confirm(f"Delete custom food {food_id}?", abort=True)
+    context.client.request("DELETE", f"/foods/{food_id}")
+    click.echo(f"Deleted custom food {food_id}.")
 
 
 @click.group()
@@ -283,6 +411,39 @@ def add_diary_entry(
         f"{_number(data['amount'])} {data['unit']} "
         f"({_macro_summary(data['nutrients_total'])})"
     )
+
+
+@diary.command("update")
+@click.argument("entry_id", type=int)
+@click.option("--amount", type=click.FloatRange(min=0, min_open=True))
+@click.option("--unit")
+@click.option("--meal", "meal_type", type=click.Choice(MEALS))
+@click.pass_obj
+def update_diary_entry(
+    context: CLIContext,
+    entry_id: int,
+    amount: float | None,
+    unit: str | None,
+    meal_type: str | None,
+) -> None:
+    """Update a diary entry."""
+    body = {
+        key: value
+        for key, value in {
+            "amount": amount,
+            "unit": unit,
+            "meal_type": meal_type,
+        }.items()
+        if value is not None
+    }
+    if not body:
+        raise click.UsageError("Provide --amount, --unit, or --meal")
+    result = context.client.request(
+        "PATCH",
+        f"/diary/entries/{entry_id}",
+        json=body,
+    )
+    _echo_json(result)
 
 
 @diary.command("delete")
@@ -392,6 +553,39 @@ def add_weight(
     )
 
 
+@weight.command("update")
+@click.argument("entry_id", type=int)
+@click.option("--kg", type=click.FloatRange(min=0, min_open=True))
+@click.option("--lb", type=click.FloatRange(min=0, min_open=True))
+@click.option("--notes")
+@click.pass_obj
+def update_weight(
+    context: CLIContext,
+    entry_id: int,
+    kg: float | None,
+    lb: float | None,
+    notes: str | None,
+) -> None:
+    """Update a weight entry."""
+    if kg is not None and lb is not None:
+        raise click.UsageError("--kg and --lb cannot be combined")
+    body: dict[str, Any] = {}
+    if kg is not None:
+        body["weight_kg"] = kg
+    elif lb is not None:
+        body["weight_kg"] = lb / POUNDS_PER_KILOGRAM
+    if notes is not None:
+        body["notes"] = notes
+    if not body:
+        raise click.UsageError("Provide --kg, --lb, or --notes")
+    result = context.client.request(
+        "PATCH",
+        f"/weight/{entry_id}",
+        json=body,
+    )
+    _echo_json(result)
+
+
 @weight.command("list")
 @click.option("--date", "entry_date", type=ISO_DATE)
 @click.option("--start", type=ISO_DATE)
@@ -428,3 +622,15 @@ def list_weight(
         click.echo(
             f"[{entry['id']}] {entry['date']}: {_number(entry['weight_kg'])} kg{notes}"
         )
+
+
+@weight.command("delete")
+@click.argument("entry_id", type=int)
+@click.option("--yes", is_flag=True, help="Delete without confirmation.")
+@click.pass_obj
+def delete_weight(context: CLIContext, entry_id: int, yes: bool) -> None:
+    """Delete a weight entry."""
+    if not yes:
+        click.confirm(f"Delete weight entry {entry_id}?", abort=True)
+    context.client.request("DELETE", f"/weight/{entry_id}")
+    click.echo(f"Deleted weight entry {entry_id}.")

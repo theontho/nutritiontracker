@@ -14,10 +14,17 @@ def test_cli_exposes_nutrition_commands():
     result = runner.invoke(cli, ["--help"])
 
     assert result.exit_code == 0
+    assert "activity" in result.output
     assert "foods" in result.output
     assert "diary" in result.output
+    assert "events" in result.output
+    assert "journal" in result.output
+    assert "kitchen" in result.output
     assert "query" in result.output
+    assert "recipes" in result.output
+    assert "request" in result.output
     assert "stats" in result.output
+    assert "users" in result.output
     assert "weight" in result.output
 
 
@@ -180,6 +187,268 @@ def test_query_rejects_embedded_query_string():
     assert result.exit_code == 2
     assert "use --param KEY=VALUE" in result.output
     request.assert_not_called()
+
+
+def test_request_supports_mutating_api_endpoints():
+    with patch(
+        "app.cli.client.APIClient.request",
+        return_value={"id": 7, "name": "Dinner"},
+    ) as request:
+        result = runner.invoke(
+            cli,
+            [
+                "request",
+                "PATCH",
+                "/recipes/7",
+                "--param",
+                "audit=true",
+                "--data",
+                '{"name":"Dinner"}',
+            ],
+        )
+
+    assert result.exit_code == 0
+    assert '"name": "Dinner"' in result.output
+    request.assert_called_once_with(
+        "PATCH",
+        "/recipes/7",
+        params=[("audit", "true")],
+        json={"name": "Dinner"},
+    )
+
+
+def test_request_reads_json_body_from_file():
+    with runner.isolated_filesystem():
+        with open("event.json", "w") as payload:
+            payload.write('{"event_type_id":2,"date":"2026-08-02"}')
+        with patch(
+            "app.cli.client.APIClient.request",
+            return_value={"id": 9},
+        ) as request:
+            result = runner.invoke(
+                cli,
+                [
+                    "request",
+                    "POST",
+                    "/events",
+                    "--data-file",
+                    "event.json",
+                ],
+            )
+
+    assert result.exit_code == 0
+    request.assert_called_once_with(
+        "POST",
+        "/events",
+        params=[],
+        json={"event_type_id": 2, "date": "2026-08-02"},
+    )
+
+
+def test_request_rejects_non_object_json():
+    with patch("app.cli.client.APIClient.request") as request:
+        result = runner.invoke(
+            cli,
+            ["request", "POST", "/events", "--data", "[]"],
+        )
+
+    assert result.exit_code == 2
+    assert "must contain a JSON object" in result.output
+    request.assert_not_called()
+
+
+def test_food_create_posts_json():
+    body = {"name": "My oats", "source": "custom"}
+    with patch(
+        "app.cli.client.APIClient.request",
+        return_value={"id": 3, **body},
+    ) as request:
+        result = runner.invoke(
+            cli,
+            ["foods", "create", "--data", '{"name":"My oats","source":"custom"}'],
+        )
+
+    assert result.exit_code == 0
+    request.assert_called_once_with("POST", "/foods", json=body)
+
+
+def test_diary_update_patches_selected_fields():
+    with patch(
+        "app.cli.client.APIClient.request",
+        return_value={"id": 5},
+    ) as request:
+        result = runner.invoke(
+            cli,
+            ["diary", "update", "5", "--amount", "2", "--meal", "dinner"],
+        )
+
+    assert result.exit_code == 0
+    request.assert_called_once_with(
+        "PATCH",
+        "/diary/entries/5",
+        json={"amount": 2.0, "meal_type": "dinner"},
+    )
+
+
+def test_activity_import_posts_complete_observation():
+    with patch(
+        "app.cli.client.APIClient.request",
+        return_value={"date": "2026-08-02", "steps": 1200},
+    ) as request:
+        result = runner.invoke(
+            cli,
+            [
+                "activity",
+                "import-steps",
+                "--source",
+                "apple_health",
+                "--observed-at",
+                "2026-08-02T12:00:00-07:00",
+                "--period-start",
+                "2026-08-02T00:00:00-07:00",
+                "--period-end",
+                "2026-08-02T12:00:00-07:00",
+                "--steps",
+                "1200",
+                "--timezone",
+                "America/Los_Angeles",
+            ],
+        )
+
+    assert result.exit_code == 0
+    request.assert_called_once_with(
+        "POST",
+        "/imports/activity/steps",
+        json={
+            "source": "apple_health",
+            "observed_at": "2026-08-02T12:00:00-07:00",
+            "period_start": "2026-08-02T00:00:00-07:00",
+            "period_end": "2026-08-02T12:00:00-07:00",
+            "steps_total_today": 1200,
+            "timezone": "America/Los_Angeles",
+        },
+    )
+
+
+def test_journal_add_posts_scores_and_tags():
+    with patch(
+        "app.cli.client.APIClient.request",
+        return_value={"id": 4},
+    ) as request:
+        result = runner.invoke(
+            cli,
+            [
+                "journal",
+                "add",
+                "Good day",
+                "--date",
+                "2026-08-02",
+                "--tag",
+                "training",
+                "--mood",
+                "8",
+            ],
+        )
+
+    assert result.exit_code == 0
+    request.assert_called_once_with(
+        "POST",
+        "/journal",
+        json={
+            "date": "2026-08-02",
+            "body": "Good day",
+            "tags": ["training"],
+            "mood_score": 8,
+        },
+    )
+
+
+def test_event_add_preserves_zero_value():
+    with patch(
+        "app.cli.client.APIClient.request",
+        return_value={"id": 6},
+    ) as request:
+        result = runner.invoke(
+            cli,
+            [
+                "events",
+                "add",
+                "2",
+                "--date",
+                "2026-08-02",
+                "--value",
+                "0",
+                "--unit",
+                "minutes",
+            ],
+        )
+
+    assert result.exit_code == 0
+    request.assert_called_once_with(
+        "POST",
+        "/events",
+        json={
+            "event_type_id": 2,
+            "date": "2026-08-02",
+            "value": 0.0,
+            "unit": "minutes",
+        },
+    )
+
+
+def test_kitchen_inventory_search_maps_filters():
+    with patch(
+        "app.cli.client.APIClient.request",
+        return_value=[],
+    ) as request:
+        result = runner.invoke(
+            cli,
+            [
+                "kitchen",
+                "inventory",
+                "list",
+                "--search",
+                "oats",
+                "--status",
+                "have",
+            ],
+        )
+
+    assert result.exit_code == 0
+    request.assert_called_once_with(
+        "GET",
+        "/kitchen/inventory",
+        params={"status": "have", "q": "oats"},
+    )
+
+
+def test_shopping_generate_posts_meal_ids():
+    with patch(
+        "app.cli.client.APIClient.request",
+        return_value=[],
+    ) as request:
+        result = runner.invoke(
+            cli,
+            ["kitchen", "shopping", "generate", "3", "8"],
+        )
+
+    assert result.exit_code == 0
+    request.assert_called_once_with(
+        "POST",
+        "/kitchen/shopping-list/generate",
+        json={"meal_ids": [3, 8]},
+    )
+
+
+def test_user_create_posts_name():
+    with patch(
+        "app.cli.client.APIClient.request",
+        return_value={"id": 2, "name": "Alex", "token": "new-token"},
+    ) as request:
+        result = runner.invoke(cli, ["users", "create", "Alex"])
+
+    assert result.exit_code == 0
+    request.assert_called_once_with("POST", "/users", json={"name": "Alex"})
 
 
 def test_stats_rejects_reversed_range_without_api_call():

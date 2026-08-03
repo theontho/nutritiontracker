@@ -2,7 +2,8 @@ import click
 
 from app.cli.client import DEFAULT_BASE_URL, APIClient, CLIContext
 from app.cli.exercises import exercises
-from app.cli.nutrition import diary, foods, health, query, stats, weight
+from app.cli.nutrition import api_request, diary, foods, health, query, stats, weight
+from app.cli.resources import activity, events, journal, kitchen, recipes, users
 from app.cli.workout import workout
 
 
@@ -40,11 +41,18 @@ def cli(
     )
 
 
+cli.add_command(activity)
 cli.add_command(diary)
 cli.add_command(exercises)
+cli.add_command(events)
 cli.add_command(foods)
 cli.add_command(health)
+cli.add_command(journal)
+cli.add_command(kitchen)
 cli.add_command(query)
+cli.add_command(recipes)
+cli.add_command(api_request)
 cli.add_command(stats)
+cli.add_command(users)
 cli.add_command(weight)
 cli.add_command(workout)
