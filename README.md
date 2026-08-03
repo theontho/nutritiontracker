@@ -186,6 +186,37 @@ pip install -e ".[dev]"
 pytest tests/
 ```
 
+## CLI
+
+Installing the package provides the `nutritiontracker` command. It connects to
+`http://127.0.0.1:8000` by default; use environment variables for another
+deployment:
+
+```bash
+export NT_BASE_URL=https://nutrition.example.com
+export NT_BEARER_TOKEN=your-token
+
+nutritiontracker health
+nutritiontracker foods search "chicken breast"
+nutritiontracker diary add 123 150 g --meal lunch
+nutritiontracker diary search "chicken breast"
+nutritiontracker diary show
+nutritiontracker stats daily
+nutritiontracker weight add 180 --unit lb
+```
+
+Pass `--json` before the command for machine-readable output, such as
+`nutritiontracker --json stats daily`.
+
+The read-only `query` command covers API lookups that do not have a dedicated
+CLI command. Parameters are repeatable and results are always JSON:
+
+```bash
+nutritiontracker query /kitchen/inventory --param q=tomato --param status=have
+nutritiontracker query /events --param start=2026-08-01 --param limit=20
+nutritiontracker query /recipes --param limit=10
+```
+
 ## Data import
 
 The app ships with no food data. Seed it from USDA and OpenFoodFacts.

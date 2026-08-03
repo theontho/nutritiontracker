@@ -32,6 +32,7 @@ dev = [
 ]
 
 [project.scripts]
+nutritiontracker = "app.cli.main:cli"
 nutrition-pp-cli = "app.cli.main:cli"
 
 [build-system]
