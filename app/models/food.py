@@ -54,7 +54,7 @@ SourceType = Literal["custom", "open_food_facts", "food_data_central", "recipe"]
 
 
 class FoodCreate(BaseModel):
-    source: SourceType = "custom"
+    source: Literal["custom"] = "custom"
     source_code: str | None = None
     name: str
     brand: str | None = None

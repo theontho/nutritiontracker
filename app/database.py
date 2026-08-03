@@ -199,7 +199,12 @@ def init_schema(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_foods_source ON foods(source);
         CREATE INDEX IF NOT EXISTS idx_foods_owner ON foods(owner_user_id);
         CREATE INDEX IF NOT EXISTS idx_foods_source_code ON foods(source, source_code);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_foods_source_code_unique ON foods(source, source_code) WHERE source_code IS NOT NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_foods_shared_source_code_unique
+            ON foods(source, source_code)
+            WHERE source_code IS NOT NULL AND owner_user_id IS NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_foods_owned_source_code_unique
+            ON foods(owner_user_id, source, source_code)
+            WHERE source_code IS NOT NULL AND owner_user_id IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_diary_user_date ON diary_entries(user_id, date);
         CREATE INDEX IF NOT EXISTS idx_diary_food_name ON diary_entries(user_id, food_name);
         CREATE INDEX IF NOT EXISTS idx_weight_user_date ON weight_entries(user_id, date);

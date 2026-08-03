@@ -18,6 +18,10 @@ def _create_user(client, name: str) -> dict:
     return response.json()
 
 
+def _token_headers(token: str) -> dict[str, str]:
+    return {"Authorization": "Bearer " + token}
+
+
 def test_user_tokens_isolate_personal_data_and_custom_foods(client, db, monkeypatch):
     monkeypatch.setattr(settings, "bearer_token", "admin-token")
     monkeypatch.setattr(settings, "multi_user_enabled", True)
@@ -52,6 +56,30 @@ def test_user_tokens_isolate_personal_data_and_custom_foods(client, db, monkeypa
 
     assert client.get("/diary/2026-08-01", headers=_admin_headers()).json() == []
     assert len(client.get("/diary/2026-08-01", headers=user_headers).json()) == 1
+
+
+def test_private_source_codes_are_scoped_per_user(client, monkeypatch):
+    monkeypatch.setattr(settings, "bearer_token", "admin-token")
+    monkeypatch.setattr(settings, "multi_user_enabled", True)
+    user = _create_user(client, "Second user")
+    user_headers = _token_headers(user["token"])
+    payload = {"source": "custom", "source_code": "shared-name", "name": "Blend"}
+
+    first = client.post("/foods", headers=_admin_headers(), json=payload)
+    second = client.post("/foods", headers=user_headers, json=payload)
+
+    assert first.status_code == second.status_code == 201
+    assert first.json()["id"] != second.json()["id"]
+
+
+def test_custom_food_endpoint_rejects_catalog_sources(client):
+    response = client.post(
+        "/foods",
+        headers=_admin_headers(),
+        json={"source": "open_food_facts", "source_code": "123", "name": "Squat"},
+    )
+
+    assert response.status_code == 422
 
 
 def test_only_admin_can_create_users(client, monkeypatch):
@@ -190,3 +218,34 @@ def test_migration_0005_seeds_the_configured_default_user(monkeypatch):
     monkeypatch.setenv("NT_DEFAULT_USER_ID", "0")
     with pytest.raises(ValueError, match="positive rowid"):
         module._default_user_id()
+
+
+def test_migration_0005_owns_legacy_custom_and_recipe_foods(tmp_path, monkeypatch):
+    import sqlite3
+    from pathlib import Path
+
+    from alembic import command
+    from alembic.config import Config
+
+    database_path = tmp_path / "legacy.db"
+    monkeypatch.setenv("NT_DB_PATH", str(database_path))
+    root = Path(__file__).resolve().parents[1]
+    config = Config(str(root / "alembic.ini"))
+    command.upgrade(config, "0004")
+
+    conn = sqlite3.connect(database_path)
+    conn.executemany(
+        "INSERT INTO foods (source, name) VALUES (?, ?)",
+        [("custom", "Private custom"), ("recipe", "Private recipe")],
+    )
+    conn.commit()
+    conn.close()
+
+    command.upgrade(config, "head")
+
+    conn = sqlite3.connect(database_path)
+    owners = conn.execute(
+        "SELECT source, owner_user_id FROM foods ORDER BY source"
+    ).fetchall()
+    conn.close()
+    assert owners == [("custom", 1), ("recipe", 1)]

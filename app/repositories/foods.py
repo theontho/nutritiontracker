@@ -62,6 +62,7 @@ class FoodRepository:
         """Same as create() but without committing — caller manages transactions for bulk imports."""
         source = kwargs.pop("source")
         name = kwargs.pop("name")
+        owner_user_id = kwargs.pop("owner_user_id", None)
         other_fields = [
             "source_code", "brand", "barcode", "image_url", "serving_quantity",
             "serving_unit", "serving_size_text", "ingredients_text",
@@ -70,8 +71,8 @@ class FoodRepository:
             "product_quantity_unit", "base_quantity", "base_unit", "density_g_per_ml",
         ]
         all_fields = other_fields + list(NUTRIENT_FIELDS)
-        fields = ["source", "name"]
-        values = [source, name]
+        fields = ["source", "name", "owner_user_id"]
+        values = [source, name, owner_user_id]
         for f in all_fields:
             if f in kwargs:
                 fields.append(f)
@@ -83,12 +84,20 @@ class FoodRepository:
             updates = ", ".join(
                 f"{field} = excluded.{field}"
                 for field in fields
-                if field not in ("source", "source_code")
+                if field not in ("source", "source_code", "owner_user_id")
             )
-            conflict_clause = (
-                " ON CONFLICT(source, source_code) WHERE source_code IS NOT NULL"
-                f" DO UPDATE SET {updates}, updated_at = datetime('now')"
-            )
+            if owner_user_id is None:
+                conflict_clause = (
+                    " ON CONFLICT(source, source_code) "
+                    "WHERE source_code IS NOT NULL AND owner_user_id IS NULL"
+                    f" DO UPDATE SET {updates}, updated_at = datetime('now')"
+                )
+            else:
+                conflict_clause = (
+                    " ON CONFLICT(owner_user_id, source, source_code) "
+                    "WHERE source_code IS NOT NULL AND owner_user_id IS NOT NULL"
+                    f" DO UPDATE SET {updates}, updated_at = datetime('now')"
+                )
         cur = self.conn.execute(
             f"INSERT INTO foods ({cols}) VALUES ({placeholders})"
             f"{conflict_clause} RETURNING id",

@@ -45,8 +45,22 @@ def upgrade() -> None:
     """)
     op.execute(f"INSERT INTO users (id, name) VALUES ({default_user_id}, 'Default user')")
     op.execute("ALTER TABLE foods ADD COLUMN owner_user_id INTEGER REFERENCES users(id)")
-    op.execute(f"UPDATE foods SET owner_user_id = {default_user_id} WHERE source = 'custom'")
+    op.execute(
+        f"UPDATE foods SET owner_user_id = {default_user_id} "
+        "WHERE source IN ('custom', 'recipe')"
+    )
     op.execute("CREATE INDEX idx_foods_owner ON foods(owner_user_id)")
+    op.execute("DROP INDEX IF EXISTS idx_foods_source_code_unique")
+    op.execute(
+        "CREATE UNIQUE INDEX idx_foods_shared_source_code_unique "
+        "ON foods(source, source_code) "
+        "WHERE source_code IS NOT NULL AND owner_user_id IS NULL"
+    )
+    op.execute(
+        "CREATE UNIQUE INDEX idx_foods_owned_source_code_unique "
+        "ON foods(owner_user_id, source, source_code) "
+        "WHERE source_code IS NOT NULL AND owner_user_id IS NOT NULL"
+    )
 
 
 def downgrade() -> None:
