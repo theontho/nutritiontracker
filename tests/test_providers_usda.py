@@ -21,6 +21,7 @@ def test_normalize_usda_food():
             {"nutrientId": 1111, "value": 0.4},  # Vitamin D2
             {"nutrientId": 1112, "value": 1.5},  # Vitamin D3
             {"nutrientId": 1126, "value": 0.8},  # Gamma tocopherol
+            {"nutrientId": 1242, "value": 1.25},  # Added vitamin E
             {"nutrientId": 1183, "value": 2.0},  # Menaquinone-4
             {"nutrientId": 1190, "value": 19.0},  # Folate DFE
             {"nutrientId": 1194, "value": 3.0},  # Free choline
@@ -49,6 +50,7 @@ def test_normalize_usda_food():
     assert food["vitamin_d2_ug"] == 0.4
     assert food["vitamin_d3_ug"] == 1.5
     assert food["gamma_tocopherol_mg"] == 0.8
+    assert food["vitamin_e_added_mg"] == 1.25
     assert food["menaquinone_4_ug"] == 2.0
     assert food["folate_dfe_ug"] == 19.0
     assert food["choline_free_mg"] == 3.0

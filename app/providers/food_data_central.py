@@ -70,6 +70,7 @@ NUTRIENT_MAP = {
     1113: "vitamin_d3_25_hydroxy_ug",
     2059: "vitamin_d4_ug",
     1109: "vitamin_e_mg",
+    1242: "vitamin_e_added_mg",
     1125: "beta_tocopherol_mg",
     1126: "gamma_tocopherol_mg",
     1127: "delta_tocopherol_mg",

@@ -18,12 +18,22 @@ PERSONAL_TABLES = (
     "recipes",
     "weight_entries",
     "journal_entries",
+    "event_types",
+    "events",
     "step_observations",
     "daily_activity",
     "kitchen_inventory_items",
     "favorite_meals",
     "favorite_meal_ingredients",
     "shopping_list_items",
+)
+
+LEGACY_USDA_SOURCE = "food_data_central"
+MODERN_USDA_SOURCES = (
+    "usda_fndds",
+    "usda_foundation",
+    "usda_sr_legacy",
+    "usda_branded",
 )
 
 
@@ -38,7 +48,10 @@ def _columns(conn: sqlite3.Connection, table: str) -> tuple[str, ...]:
 
 
 def _insert_row(
-    target: sqlite3.Connection, table: str, row: sqlite3.Row, columns: tuple[str, ...],
+    target: sqlite3.Connection,
+    table: str,
+    row: sqlite3.Row,
+    columns: tuple[str, ...],
     overrides: dict[str, object] | None = None,
 ) -> int:
     values = dict(row)
@@ -63,12 +76,33 @@ def _find_or_copy_food(
     if source_food_id in food_id_map:
         return food_id_map[source_food_id]
 
-    food = source.execute("SELECT * FROM foods WHERE id = ?", (source_food_id,)).fetchone()
+    food = source.execute(
+        "SELECT * FROM foods WHERE id = ?", (source_food_id,)
+    ).fetchone()
     if food is None:
         raise ValueError(f"Diary entry references missing source food {source_food_id}")
 
     source_code = food["source_code"]
     if source_code is not None:
+        if food["source"] == LEGACY_USDA_SOURCE:
+            placeholders = ", ".join("?" for _ in MODERN_USDA_SOURCES)
+            matches = target.execute(
+                f"""SELECT id, source
+                    FROM foods
+                    WHERE source_code = ?
+                      AND source IN ({placeholders})
+                    ORDER BY id""",
+                (source_code, *MODERN_USDA_SOURCES),
+            ).fetchall()
+            if len(matches) > 1:
+                sources = ", ".join(match["source"] for match in matches)
+                raise ValueError(
+                    f"Ambiguous modern USDA match for FDC {source_code}: {sources}"
+                )
+            if matches:
+                food_id_map[source_food_id] = matches[0]["id"]
+                return matches[0]["id"]
+
         existing = target.execute(
             "SELECT id FROM foods WHERE source = ? AND source_code = ?",
             (food["source"], source_code),
@@ -94,7 +128,9 @@ def _migrate_users(source: sqlite3.Connection, target: sqlite3.Connection) -> in
         return 0
 
     common = tuple(
-        column for column in _columns(source, "users") if column in _columns(target, "users")
+        column
+        for column in _columns(source, "users")
+        if column in _columns(target, "users")
     )
     count = 0
     for row in source.execute("SELECT * FROM users ORDER BY id"):
@@ -134,7 +170,9 @@ def migrate_personal_data(source_path: Path, target_path: Path) -> dict[str, int
 
         user_count = _migrate_users(source, target)
 
-        for food in source.execute("SELECT id FROM foods WHERE source = 'custom' ORDER BY id"):
+        for food in source.execute(
+            "SELECT id FROM foods WHERE source = 'custom' ORDER BY id"
+        ):
             _find_or_copy_food(
                 source, target, food["id"], common_food_columns, food_id_map
             )
@@ -153,7 +191,7 @@ def migrate_personal_data(source_path: Path, target_path: Path) -> dict[str, int
             )
             count = 0
             for row in source.execute(f"SELECT * FROM {table} ORDER BY id"):
-                overrides = None
+                overrides: dict[str, object] | None = None
                 if table == "diary_entries":
                     overrides = {"food_id": food_id_map[row["food_id"]]}
                 _insert_row(target, table, row, common_columns, overrides)

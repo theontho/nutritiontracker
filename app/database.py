@@ -138,6 +138,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
             vitamin_d3_25_hydroxy_ug REAL,
             vitamin_d4_ug REAL,
             vitamin_e_mg REAL,
+            vitamin_e_added_mg REAL,
             beta_tocopherol_mg REAL,
             gamma_tocopherol_mg REAL,
             delta_tocopherol_mg REAL,

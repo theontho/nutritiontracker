@@ -81,6 +81,7 @@ class NutrientsPer100(BaseModel):
     vitamin_d3_25_hydroxy_ug: float | None = None
     vitamin_d4_ug: float | None = None
     vitamin_e_mg: float | None = None
+    vitamin_e_added_mg: float | None = None
     beta_tocopherol_mg: float | None = None
     gamma_tocopherol_mg: float | None = None
     delta_tocopherol_mg: float | None = None
@@ -319,6 +320,7 @@ class FoodOut(BaseModel):
     vitamin_d3_25_hydroxy_ug: float | None = None
     vitamin_d4_ug: float | None = None
     vitamin_e_mg: float | None = None
+    vitamin_e_added_mg: float | None = None
     beta_tocopherol_mg: float | None = None
     gamma_tocopherol_mg: float | None = None
     delta_tocopherol_mg: float | None = None
