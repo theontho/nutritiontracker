@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from app.repositories.foods import FoodRepository
 
 
@@ -19,6 +21,9 @@ def test_create_diary_entry(client, db):
     assert r.status_code == 201
     assert r.json()["grams"] == 100
     assert r.json()["nutrients_total"]["calories_kcal"] == 89
+    created_at = datetime.fromisoformat(r.json()["created_at"])
+    assert created_at.utcoffset() is not None
+    assert created_at.utcoffset().total_seconds() == 0
 
 
 def test_list_diary(client, db):
@@ -29,6 +34,7 @@ def test_list_diary(client, db):
     r = client.get("/diary/2026-05-19")
     assert r.status_code == 200
     assert len(r.json()) == 1
+    assert datetime.fromisoformat(r.json()[0]["created_at"]).utcoffset() is not None
 
 
 def test_update_diary_entry(client, db):

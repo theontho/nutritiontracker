@@ -1,6 +1,7 @@
-from datetime import datetime
-from pydantic import BaseModel
+from datetime import UTC, datetime
 from typing import Literal
+
+from pydantic import BaseModel, field_validator
 
 MealType = Literal["breakfast", "lunch", "dinner", "snack"]
 
@@ -32,3 +33,10 @@ class DiaryEntry(BaseModel):
     nutrients_total: dict
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("created_at", "updated_at", mode="after")
+    @classmethod
+    def timestamps_are_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
