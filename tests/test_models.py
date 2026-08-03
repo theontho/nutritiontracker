@@ -14,13 +14,17 @@ def test_nutrients_default_to_unknown():
     assert n.niacin_mg is None
     assert n.caffeine_mg is None
     assert n.riboflavin_mg is None
+    assert n.beta_carotene_ug is None
+    assert n.vitamin_d3_ug is None
+    assert n.gamma_tocopherol_mg is None
 
 
 def test_nutrients_keep_explicit_zero():
-    n = NutrientsPer100(calories_kcal=0, protein_g=1.5)
+    n = NutrientsPer100(calories_kcal=0, protein_g=1.5, beta_carotene_ug=0)
     assert n.calories_kcal == 0
     assert n.protein_g == 1.5
     assert n.fiber_g is None
+    assert n.beta_carotene_ug == 0
 
 
 def test_food_create_minimal():

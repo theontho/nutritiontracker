@@ -129,6 +129,19 @@ def test_normalize_folate_prefers_dfe():
     assert fallback["folate_ug"] == 116.0
 
 
+def test_normalize_preserves_independent_vitamin_forms():
+    food = normalize_cnf_food(
+        {"319": 12.0, "321": 25.0, "325": 0.4, "342": 0.7, "435": 194.0},
+        food_code="1",
+        name="X",
+    )
+    assert food["retinol_ug"] == 12.0
+    assert food["beta_carotene_ug"] == 25.0
+    assert food["vitamin_d2_ug"] == 0.4
+    assert food["gamma_tocopherol_mg"] == 0.7
+    assert food["folate_dfe_ug"] == 194.0
+
+
 def test_check_nutrient_units_accepts_published_units():
     check_nutrient_units({c: u for c, _, u in NUTRIENT_NAMES})
 
@@ -168,9 +181,9 @@ def test_read_directory_ignores_refuse_measures(tmp_path):
         foods=[("2213", "Spinach, raw", "11")],
         amounts=[("2213", "208", "23.0")],
         measures=[
-            ("2213", "3", "750", "28"),      # refuse: stems
-            ("2213", "9", "383", "90"),      # cooking yield
-            ("2213", "6", "341", "12.68"),   # the real household measure
+            ("2213", "3", "750", "28"),  # refuse: stems
+            ("2213", "9", "383", "90"),  # cooking yield
+            ("2213", "6", "341", "12.68"),  # the real household measure
         ],
     )
     food = next(iter(read_cnf_directory(directory)))

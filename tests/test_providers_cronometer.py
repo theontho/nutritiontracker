@@ -30,6 +30,9 @@ ACAI = {
         {"id": 323, "amount": 14.8, "type": "PRIMARY"},
         {"id": 324, "amount": 80, "type": "PRIMARY"},
         {"id": 401, "amount": 0, "type": "PRIMARY"},
+        {"id": 319, "amount": 2.5, "type": "PRIMARY"},
+        {"id": 321, "amount": 42, "type": "PRIMARY"},
+        {"id": 342, "amount": 0.7, "type": "PRIMARY"},
     ],
 }
 
@@ -88,6 +91,9 @@ def test_values_are_taken_per_100g_unchanged():
     assert food["calories_kcal"] == 61
     assert food["protein_g"] == 0.82
     assert food["vitamin_e_mg"] == 14.8
+    assert food["retinol_ug"] == 2.5
+    assert food["beta_carotene_ug"] == 42
+    assert food["gamma_tocopherol_mg"] == 0.7
     assert food["base_quantity"] == 100
     assert food["base_unit"] == "g"
 

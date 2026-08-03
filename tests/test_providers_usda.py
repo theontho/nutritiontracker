@@ -8,14 +8,22 @@ def test_normalize_usda_food():
         "brandName": None,
         "gtinUpc": "",
         "foodNutrients": [
-            {"nutrientId": 1008, "value": 89},   # Energy
-            {"nutrientId": 1003, "value": 1.1},   # Protein
+            {"nutrientId": 1008, "value": 89},  # Energy
+            {"nutrientId": 1003, "value": 1.1},  # Protein
             {"nutrientId": 1005, "value": 22.8},  # Carbs
-            {"nutrientId": 1004, "value": 0.3},   # Fat
-            {"nutrientId": 1057, "value": 1.2},   # Caffeine
+            {"nutrientId": 1004, "value": 0.3},  # Fat
+            {"nutrientId": 1057, "value": 1.2},  # Caffeine
             {"nutrientId": 1166, "value": 0.07},  # Riboflavin
-            {"nutrientId": 1176, "value": 0.2},   # Biotin
-            {"nutrientId": 1103, "value": 1.1},   # Selenium
+            {"nutrientId": 1176, "value": 0.2},  # Biotin
+            {"nutrientId": 1103, "value": 1.1},  # Selenium
+            {"nutrientId": 1105, "value": 12.0},  # Retinol
+            {"nutrientId": 1107, "value": 26.0},  # Beta-carotene
+            {"nutrientId": 1111, "value": 0.4},  # Vitamin D2
+            {"nutrientId": 1112, "value": 1.5},  # Vitamin D3
+            {"nutrientId": 1126, "value": 0.8},  # Gamma tocopherol
+            {"nutrientId": 1183, "value": 2.0},  # Menaquinone-4
+            {"nutrientId": 1190, "value": 19.0},  # Folate DFE
+            {"nutrientId": 1194, "value": 3.0},  # Free choline
         ],
     }
     food = normalize_usda_food(raw)
@@ -28,6 +36,14 @@ def test_normalize_usda_food():
     assert food["riboflavin_mg"] == 0.07
     assert food["biotin_ug"] == 0.2
     assert food["selenium_ug"] == 1.1
+    assert food["retinol_ug"] == 12.0
+    assert food["beta_carotene_ug"] == 26.0
+    assert food["vitamin_d2_ug"] == 0.4
+    assert food["vitamin_d3_ug"] == 1.5
+    assert food["gamma_tocopherol_mg"] == 0.8
+    assert food["menaquinone_4_ug"] == 2.0
+    assert food["folate_dfe_ug"] == 19.0
+    assert food["choline_free_mg"] == 3.0
 
 
 def test_normalize_handles_missing_nutrients():

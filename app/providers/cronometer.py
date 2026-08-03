@@ -39,6 +39,8 @@ import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
 
+from app.models.food import NutrientsPer100
+
 CRONOMETER_SOURCE = "cronometer"
 
 FOOD_DETAILS_DIR = Path("raw") / "mobile" / "food_details" / "objects"
@@ -72,9 +74,18 @@ FIELD_NUTRIENTS: dict[str, int] = {
     "chromium_ug": 10003,
     "iodine_ug": 10005,
     "vitamin_a_ug": 320,
+    "retinol_ug": 319,
+    "beta_carotene_ug": 321,
+    "alpha_carotene_ug": 322,
+    "beta_cryptoxanthin_ug": 334,
+    "lycopene_ug": 337,
+    "lutein_zeaxanthin_ug": 338,
     "vitamin_c_mg": 401,
     "vitamin_d_ug": 324,
     "vitamin_e_mg": 323,
+    "beta_tocopherol_mg": 341,
+    "gamma_tocopherol_mg": 342,
+    "delta_tocopherol_mg": 343,
     "vitamin_k_ug": 430,
     "thiamin_mg": 404,
     "riboflavin_mg": 405,
@@ -87,9 +98,11 @@ FIELD_NUTRIENTS: dict[str, int] = {
     "choline_mg": 421,
 }
 
-# Cronometer reports no folic acid separately from total folate, so it stays
-# unknown rather than being confused with the folate figure.
-UNREPORTED_FIELDS = ("folic_acid_ug",)
+# Forms absent from Cronometer's nutrient catalog stay unknown rather than
+# being inferred from a parent total.
+UNREPORTED_FIELDS = tuple(
+    field for field in NutrientsPer100.model_fields if field not in FIELD_NUTRIENTS
+)
 
 # The unit each mapped nutrient is published in. Raw food documents carry bare
 # numbers, so imports verify these against the units Cronometer labels the same
@@ -97,14 +110,52 @@ UNREPORTED_FIELDS = ("folic_acid_ug",)
 # silently rescaling values.
 PUBLISHED_UNITS: dict[int, str] = {
     208: "kcal",
-    203: "g", 205: "g", 204: "g", 269: "g", 10009: "g",
-    606: "g", 605: "g", 645: "g", 646: "g", 291: "g",
-    601: "mg", 262: "mg", 307: "mg", 306: "mg", 301: "mg", 303: "mg",
-    304: "mg", 309: "mg", 305: "mg", 312: "mg", 315: "mg",
-    401: "mg", 323: "mg", 404: "mg", 405: "mg", 415: "mg", 406: "mg",
-    410: "mg", 421: "mg",
-    317: "ug", 10003: "ug", 10005: "ug", 320: "ug", 430: "ug",
-    418: "ug", 10004: "ug", 417: "ug",
+    203: "g",
+    205: "g",
+    204: "g",
+    269: "g",
+    10009: "g",
+    606: "g",
+    605: "g",
+    645: "g",
+    646: "g",
+    291: "g",
+    601: "mg",
+    262: "mg",
+    307: "mg",
+    306: "mg",
+    301: "mg",
+    303: "mg",
+    304: "mg",
+    309: "mg",
+    305: "mg",
+    312: "mg",
+    315: "mg",
+    401: "mg",
+    323: "mg",
+    341: "mg",
+    342: "mg",
+    343: "mg",
+    404: "mg",
+    405: "mg",
+    415: "mg",
+    406: "mg",
+    410: "mg",
+    421: "mg",
+    317: "ug",
+    10003: "ug",
+    10005: "ug",
+    319: "ug",
+    320: "ug",
+    321: "ug",
+    322: "ug",
+    334: "ug",
+    337: "ug",
+    338: "ug",
+    430: "ug",
+    418: "ug",
+    10004: "ug",
+    417: "ug",
     # Cronometer publishes vitamin D in international units, not micrograms.
     324: "IU",
 }
@@ -221,7 +272,7 @@ def normalize_cronometer_food(document: dict) -> dict:
         nutrients[field] = None
 
     raw_source = document.get("source")
-    source, source_code = parse_source(raw_source, food_id)
+    source, source_code = parse_source(raw_source, str(food_id))
     serving_grams, serving_text = pick_serving(
         document.get("measures") or [], document.get("defaultMeasureId")
     )

@@ -36,9 +36,24 @@ OFF_NUTRIENT_MAP = {
     "chromium_ug": (("chromium",), "g", "ug"),
     "iodine_ug": (("iodine",), "g", "ug"),
     "vitamin_a_ug": (("vitamin-a",), "g", "ug"),
+    "retinol_ug": (("retinol",), "g", "ug"),
+    "beta_carotene_ug": (("beta-carotene",), "g", "ug"),
+    "alpha_carotene_ug": (("alpha-carotene",), "g", "ug"),
+    "beta_cryptoxanthin_ug": (("beta-cryptoxanthin",), "g", "ug"),
+    "lycopene_ug": (("lycopene",), "g", "ug"),
+    "lutein_zeaxanthin_ug": (("lutein-zeaxanthin",), "g", "ug"),
     "vitamin_c_mg": (("vitamin-c",), "g", "mg"),
     "vitamin_d_ug": (("vitamin-d",), "g", "ug"),
+    "vitamin_d2_ug": (("vitamin-d2",), "g", "ug"),
+    "vitamin_d3_ug": (("vitamin-d3",), "g", "ug"),
     "vitamin_e_mg": (("vitamin-e",), "g", "mg"),
+    "beta_tocopherol_mg": (("beta-tocopherol",), "g", "mg"),
+    "gamma_tocopherol_mg": (("gamma-tocopherol",), "g", "mg"),
+    "delta_tocopherol_mg": (("delta-tocopherol",), "g", "mg"),
+    "alpha_tocotrienol_mg": (("alpha-tocotrienol",), "g", "mg"),
+    "beta_tocotrienol_mg": (("beta-tocotrienol",), "g", "mg"),
+    "gamma_tocotrienol_mg": (("gamma-tocotrienol",), "g", "mg"),
+    "delta_tocotrienol_mg": (("delta-tocotrienol",), "g", "mg"),
     "vitamin_k_ug": (("vitamin-k",), "g", "ug"),
     "thiamin_mg": (("vitamin-b1",), "g", "mg"),
     "riboflavin_mg": (("vitamin-b2",), "g", "mg"),
@@ -49,6 +64,9 @@ OFF_NUTRIENT_MAP = {
     "biotin_ug": (("biotin",), "g", "ug"),
     "folate_ug": (("folates",), "g", "ug"),
     "folic_acid_ug": (("vitamin-b9",), "g", "ug"),
+    "folate_food_ug": (("folate-food",), "g", "ug"),
+    "folate_dfe_ug": (("folate-dfe",), "g", "ug"),
+    "vitamin_b12_added_ug": (("vitamin-b12-added",), "g", "ug"),
     "choline_mg": (("choline",), "g", "mg"),
 }
 
@@ -76,7 +94,11 @@ def _convert_unit(value: float, source_unit: str, target_unit: str) -> float:
         return value
     if source_unit == "kcal" or target_unit == "kcal":
         raise ValueError(f"Cannot convert {source_unit} to {target_unit}")
-    return value * _UNIT_FACTORS_TO_GRAMS[source_unit] / _UNIT_FACTORS_TO_GRAMS[target_unit]
+    return (
+        value
+        * _UNIT_FACTORS_TO_GRAMS[source_unit]
+        / _UNIT_FACTORS_TO_GRAMS[target_unit]
+    )
 
 
 def _parse_serving_quantity(raw: dict) -> float | None:
@@ -112,7 +134,9 @@ def _get_nutrient_value(
         if value is None:
             continue
         try:
-            source_unit = _normalized_unit(nutriments.get(f"{source_key}_unit"), default_unit)
+            source_unit = _normalized_unit(
+                nutriments.get(f"{source_key}_unit"), default_unit
+            )
             return _convert_unit(float(value), source_unit, target_unit)
         except (AttributeError, KeyError, TypeError, ValueError):
             return None
