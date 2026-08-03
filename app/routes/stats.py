@@ -17,7 +17,14 @@ def _zero_nutrients() -> dict:
 
 
 def _sum_nutrients(a: dict, b: dict) -> dict:
-    return {f: round(a.get(f, 0) + b.get(f, 0), 2) for f in NUTRIENT_FIELDS}
+    result = {}
+    for field in NUTRIENT_FIELDS:
+        left = a.get(field, 0)
+        right = b.get(field, 0)
+        result[field] = (
+            None if left is None or right is None else round(left + right, 2)
+        )
+    return result
 
 
 def _compute_daily(entries: list[dict], date: str) -> dict:

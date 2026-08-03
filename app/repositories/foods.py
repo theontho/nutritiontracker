@@ -4,6 +4,10 @@ from collections.abc import Sequence
 
 from app.models.food import NUTRIENT_FIELDS
 
+DATASET_SPECIFIC_USDA_SOURCES = frozenset(
+    {"usda_fndds", "usda_foundation", "usda_sr_legacy", "usda_branded"}
+)
+
 
 class FoodRepository:
     def __init__(self, conn: sqlite3.Connection):
@@ -80,6 +84,31 @@ class FoodRepository:
                 values.append(json.dumps(kwargs[f]) if f.endswith("_tags") else kwargs[f])
         placeholders = ", ".join(["?"] * len(values))
         cols = ", ".join(fields)
+        source_code = kwargs.get("source_code")
+        if (
+            owner_user_id is None
+            and source in DATASET_SPECIFIC_USDA_SOURCES
+            and source_code is not None
+        ):
+            legacy = self.conn.execute(
+                """SELECT id FROM foods
+                   WHERE source = 'food_data_central' AND source_code = ?
+                     AND owner_user_id IS NULL""",
+                (source_code,),
+            ).fetchone()
+            current = self.conn.execute(
+                """SELECT id FROM foods
+                   WHERE source = ? AND source_code = ? AND owner_user_id IS NULL""",
+                (source, source_code),
+            ).fetchone()
+            if legacy is not None and current is None:
+                assignments = ", ".join(f"{field} = ?" for field in fields)
+                self.conn.execute(
+                    f"UPDATE foods SET {assignments}, updated_at = datetime('now') "
+                    "WHERE id = ?",
+                    (*values, legacy["id"]),
+                )
+                return legacy["id"]
         conflict_clause = ""
         if "source_code" in fields:
             updates = ", ".join(

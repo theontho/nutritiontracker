@@ -1,5 +1,7 @@
 import httpx
 
+from app.models.food import NUTRIENT_FIELDS
+
 OFF_API_URL = "https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
 OFF_TIMEOUT = 5.0  # seconds
 
@@ -176,8 +178,8 @@ def fetch_off_by_barcode(barcode: str) -> dict | None:
         return None
 
     normalized = normalize_off_food(product)
-    # Only return if we actually got nutrient data
-    if not normalized.get("calories_kcal") and not normalized.get("protein_g"):
+    # Zero is a reported measurement, not the absence of nutrient data.
+    if not any(normalized.get(field) is not None for field in NUTRIENT_FIELDS):
         return None
 
     return normalized

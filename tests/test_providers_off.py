@@ -1,6 +1,6 @@
 import pytest
 
-from app.providers.open_food_facts import normalize_off_food
+from app.providers.open_food_facts import fetch_off_by_barcode, normalize_off_food
 
 
 def test_normalize_off_food():
@@ -107,3 +107,33 @@ def test_normalize_falls_back_to_the_unit_off_stores():
     assert food["calcium_mg"] == pytest.approx(14.0845)
     assert food["vitamin_d_ug"] == pytest.approx(2.5)
     assert food["sodium_mg"] == pytest.approx(41)
+
+
+def test_fetch_accepts_zero_calorie_product_with_reported_nutrients(monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "status": 1,
+                "product": {
+                    "code": "001",
+                    "product_name": "Diet soda",
+                    "nutriments": {
+                        "energy-kcal_100g": 0,
+                        "proteins_100g": 0,
+                        "sodium_100g": 0.01,
+                    },
+                },
+            }
+
+    monkeypatch.setattr(
+        "app.providers.open_food_facts.httpx.get", lambda *args, **kwargs: Response()
+    )
+
+    food = fetch_off_by_barcode("001")
+
+    assert food is not None
+    assert food["calories_kcal"] == 0
+    assert food["sodium_mg"] == 10

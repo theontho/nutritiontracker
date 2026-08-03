@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -148,7 +149,7 @@ class FoodSourceOut(BaseModel):
 
 class FoodOut(BaseModel):
     id: int
-    source: SourceType
+    source: str
     source_code: str | None = None
     name: str
     brand: str | None = None

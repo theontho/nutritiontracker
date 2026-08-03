@@ -223,8 +223,14 @@ def upgrade() -> None:
     op.execute("CREATE INDEX idx_foods_owner ON foods(owner_user_id)")
     op.execute("CREATE INDEX idx_foods_source_code ON foods(source, source_code)")
     op.execute(
-        "CREATE UNIQUE INDEX idx_foods_source_code_unique "
-        "ON foods(source, source_code) WHERE source_code IS NOT NULL"
+        "CREATE UNIQUE INDEX idx_foods_shared_source_code_unique "
+        "ON foods(source, source_code) "
+        "WHERE source_code IS NOT NULL AND owner_user_id IS NULL"
+    )
+    op.execute(
+        "CREATE UNIQUE INDEX idx_foods_owned_source_code_unique "
+        "ON foods(owner_user_id, source, source_code) "
+        "WHERE source_code IS NOT NULL AND owner_user_id IS NOT NULL"
     )
 
     op.execute("""

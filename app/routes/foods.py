@@ -73,7 +73,7 @@ def list_sources(request: Request):
 
 
 def _has_nutrients(food: dict) -> bool:
-    return any(food.get(k, 0) for k in ("calories_kcal", "protein_g", "carbs_g", "fat_g"))
+    return any(food.get(field) is not None for field in NUTRIENT_FIELDS)
 
 
 @router.get("/barcode/{barcode}", response_model=FoodOut, summary="Look up food by barcode")

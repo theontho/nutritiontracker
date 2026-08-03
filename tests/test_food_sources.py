@@ -135,3 +135,20 @@ def test_custom_food_reports_unknown_nutrients_as_null(client):
     assert body["fat_g"] == 100
     assert body["protein_g"] == 0
     assert body["vitamin_k_ug"] is None
+
+
+def test_registered_legacy_source_can_be_returned(client, db):
+    db.execute(
+        """INSERT INTO food_sources
+           (code, label, publisher, tier, license)
+           VALUES ('legacy_private', 'Legacy', 'Unknown', 99, 'Unknown')"""
+    )
+    food_id = db.execute(
+        "INSERT INTO foods (source, name) VALUES ('legacy_private', 'Old food')"
+    ).lastrowid
+    db.commit()
+
+    response = client.get(f"/foods/{food_id}")
+
+    assert response.status_code == 200
+    assert response.json()["source"] == "legacy_private"

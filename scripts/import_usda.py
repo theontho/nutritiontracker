@@ -27,7 +27,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.database import get_connection, init_schema
 from app.providers.food_data_central import (
     DATASET_KEY_SOURCES,
-    DEFAULT_USDA_SOURCE,
     NUTRIENT_MAP,
     NUTRIENT_PRIORITY,
     normalize_usda_food,
@@ -118,6 +117,7 @@ def import_usda(
     count = 0
     skipped = 0
     imported_ids = set()
+    imported_sources: set[str] = set()
     batch_size = 1000
     for raw in foods:
         if not isinstance(raw, dict):
@@ -126,6 +126,7 @@ def import_usda(
         normalized = normalize_usda_food(raw, source=dataset_source)
         repo.create_no_commit(**normalized)
         imported_ids.add(normalized["source_code"])
+        imported_sources.add(normalized["source"])
         count += 1
         if count % batch_size == 0:
             conn.commit()
@@ -134,7 +135,14 @@ def import_usda(
 
     fallback_count = 0
     if csv_dir:
-        fallback_source = dataset_source or DEFAULT_USDA_SOURCE
+        if dataset_source is not None:
+            fallback_source = dataset_source
+        elif len(imported_sources) == 1:
+            fallback_source = imported_sources.pop()
+        else:
+            raise ValueError(
+                "Cannot infer one USDA source for CSV fallback rows; pass --source"
+            )
         fallback_foods = _load_csv_fallback(
             Path(csv_dir), imported_ids, fallback_source
         )
