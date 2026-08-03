@@ -34,6 +34,21 @@ def test_food_create_rejects_invalid_source():
         FoodCreate(name="X", source="invalid")
 
 
+@pytest.mark.parametrize(
+    "field",
+    (
+        {"base_quantity": 0},
+        {"base_quantity": -1},
+        {"base_unit": "oz"},
+        {"density_g_per_ml": 0},
+        {"density_g_per_ml": -1},
+    ),
+)
+def test_food_create_rejects_invalid_base_measurements(field):
+    with pytest.raises(ValueError):
+        FoodCreate(name="Invalid", **field)
+
+
 def test_diary_entry_create():
     e = DiaryEntryCreate(food_id=1, amount=1.5, unit="cup", meal_type="breakfast")
     assert e.meal_type == "breakfast"

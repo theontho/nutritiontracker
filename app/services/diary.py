@@ -3,8 +3,8 @@ from app.models.food import NutrientsPer100
 
 def compute_entry_nutrients(food: dict, base_amount: float) -> dict:
     nutrient_fields = list(NutrientsPer100.model_fields.keys())
-    base_quantity = food.get("base_quantity") or 100
-    if base_quantity <= 0:
+    base_quantity = food.get("base_quantity", 100)
+    if base_quantity is None or base_quantity <= 0:
         raise ValueError("food base_quantity must be greater than zero")
     result = {}
     for field in nutrient_fields:

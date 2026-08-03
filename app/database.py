@@ -2,7 +2,7 @@ import sqlite3
 from pathlib import Path
 
 from app.config import settings
-from app.sources import FOOD_SOURCES
+from app.sources import FOOD_SOURCES, PRIVATE_SOURCE_CODES
 
 
 def get_connection(db_path: Path | None = None) -> sqlite3.Connection:
@@ -299,6 +299,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
     """)
     seed_default_user(conn)
     seed_food_sources(conn)
+    repair_food_ownership_indexes(conn)
 
 
 def seed_default_user(conn: sqlite3.Connection) -> None:
@@ -344,5 +345,27 @@ def seed_food_sources(conn: sqlite3.Connection) -> None:
             )
             for s in FOOD_SOURCES
         ],
+    )
+    conn.commit()
+
+
+def repair_food_ownership_indexes(conn: sqlite3.Connection) -> None:
+    """Idempotently repair databases initialized by pre-fix branch revisions."""
+    conn.execute("DROP INDEX IF EXISTS idx_foods_source_code_unique")
+    placeholders = ", ".join("?" for _ in PRIVATE_SOURCE_CODES)
+    conn.execute(
+        f"""UPDATE foods SET owner_user_id = ?
+            WHERE owner_user_id IS NULL AND source IN ({placeholders})""",
+        (settings.default_user_id, *sorted(PRIVATE_SOURCE_CODES)),
+    )
+    conn.execute(
+        """CREATE UNIQUE INDEX IF NOT EXISTS idx_foods_shared_source_code_unique
+           ON foods(source, source_code)
+           WHERE source_code IS NOT NULL AND owner_user_id IS NULL"""
+    )
+    conn.execute(
+        """CREATE UNIQUE INDEX IF NOT EXISTS idx_foods_owned_source_code_unique
+           ON foods(owner_user_id, source, source_code)
+           WHERE source_code IS NOT NULL AND owner_user_id IS NOT NULL"""
     )
     conn.commit()

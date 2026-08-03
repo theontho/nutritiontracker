@@ -267,6 +267,19 @@ SOURCES_BY_CODE: dict[str, FoodSource] = {s.code: s for s in FOOD_SOURCES}
 
 SOURCE_CODES: tuple[str, ...] = tuple(s.code for s in FOOD_SOURCES)
 
+PRIVATE_SOURCE_CODES = frozenset(
+    {
+        "custom",
+        "recipe",
+        "cronometer",
+        "cronometer_custom",
+        "nccdb",
+        "crdb",
+        "nutritionix",
+        "nuttab",
+    }
+)
+
 SourceType = Literal[
     "custom",
     "recipe",

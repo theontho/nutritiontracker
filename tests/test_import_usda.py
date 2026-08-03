@@ -259,3 +259,87 @@ def test_bare_list_csv_fallback_uses_inferred_dataset_source(tmp_path):
     }
     conn.close()
     assert sources == {"usda_foundation"}
+
+
+def test_reimport_merges_existing_legacy_and_dataset_specific_duplicates(tmp_path):
+    source_path = tmp_path / "foundation.json"
+    db_path = tmp_path / "nutrition.db"
+    source_path.write_text(
+        json.dumps(
+            {
+                "FoundationFoods": [
+                    {
+                        "fdcId": 123,
+                        "description": "Refreshed",
+                        "foodNutrients": [],
+                    }
+                ]
+            }
+        )
+    )
+    conn = get_connection(db_path)
+    from app.database import init_schema
+    from app.repositories.foods import FoodRepository
+
+    init_schema(conn)
+    repo = FoodRepository(conn)
+    repo.ensure_fts()
+    legacy_id = repo.create(
+        source="food_data_central",
+        source_code="123",
+        name="Legacy",
+    )
+    duplicate_id = repo.create(
+        source="usda_foundation",
+        source_code="123",
+        name="Duplicate",
+    )
+    for food_id in (legacy_id, duplicate_id):
+        conn.execute(
+            """INSERT INTO diary_entries
+               (date, meal_type, food_id, food_snapshot, food_name, amount,
+                unit, grams, nutrients_total)
+               VALUES ('2026-08-01', 'lunch', ?, '{}', 'Food', 100, 'g',
+                       100, '{}')""",
+            (food_id,),
+        )
+    conn.execute(
+        """INSERT INTO recipes
+           (name, servings, total_weight_g, ingredients,
+            nutrients_per_100, nutrients_per_serving)
+           VALUES ('Recipe', 1, 100, ?, '{}', '{}')""",
+        (
+            json.dumps(
+                [
+                    {
+                        "food_id": duplicate_id,
+                        "food_snapshot": {"name": "Duplicate"},
+                        "amount": 100,
+                        "unit": "g",
+                        "grams": 100,
+                    }
+                ]
+            ),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    import_usda(str(source_path), str(db_path))
+
+    conn = get_connection(db_path)
+    foods = conn.execute(
+        "SELECT id, source, name FROM foods WHERE source_code = '123'"
+    ).fetchall()
+    diary_ids = {
+        row["food_id"] for row in conn.execute("SELECT food_id FROM diary_entries")
+    }
+    ingredients = json.loads(
+        conn.execute("SELECT ingredients FROM recipes").fetchone()["ingredients"]
+    )
+    conn.close()
+    assert [tuple(food) for food in foods] == [
+        (legacy_id, "usda_foundation", "Refreshed")
+    ]
+    assert diary_ids == {legacy_id}
+    assert ingredients[0]["food_id"] == legacy_id

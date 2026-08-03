@@ -9,8 +9,8 @@ def compute_recipe_nutrients(
     totals: dict[str, float | None] = {f: 0.0 for f in NUTRIENT_FIELDS}
     for ing in ingredients:
         snapshot = ing["food_snapshot"]
-        base_quantity = snapshot.get("base_quantity") or 100
-        if base_quantity <= 0:
+        base_quantity = snapshot.get("base_quantity", 100)
+        if base_quantity is None or base_quantity <= 0:
             raise ValueError("food base_quantity must be greater than zero")
         base_amount = ing.get("base_amount")
         if base_amount is None:

@@ -84,9 +84,9 @@ class FoodCreate(BaseModel):
     nova_group: int | None = None
     product_quantity: float | None = None
     product_quantity_unit: str | None = None
-    base_quantity: float = 100
-    base_unit: str = "g"
-    density_g_per_ml: float | None = None
+    base_quantity: float = Field(default=100, gt=0)
+    base_unit: Literal["g", "ml"] = "g"
+    density_g_per_ml: float | None = Field(default=None, gt=0)
     nutrients: NutrientsPer100 = Field(default_factory=NutrientsPer100)
 
 
@@ -114,7 +114,7 @@ class FoodUpdate(BaseModel):
     nova_group: int | None = None
     product_quantity: float | None = None
     product_quantity_unit: str | None = None
-    density_g_per_ml: float | None = None
+    density_g_per_ml: float | None = Field(default=None, gt=0)
     nutrients: NutrientsPer100 | None = None
 
     @field_validator(

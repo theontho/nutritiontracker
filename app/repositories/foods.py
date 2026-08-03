@@ -101,7 +101,14 @@ class FoodRepository:
                    WHERE source = ? AND source_code = ? AND owner_user_id IS NULL""",
                 (source, source_code),
             ).fetchone()
-            if legacy is not None and current is None:
+            if legacy is not None:
+                if current is not None and current["id"] != legacy["id"]:
+                    self._replace_food_references(
+                        old_food_id=current["id"], new_food_id=legacy["id"]
+                    )
+                    self.conn.execute(
+                        "DELETE FROM foods WHERE id = ?", (current["id"],)
+                    )
                 assignments = ", ".join(f"{field} = ?" for field in fields)
                 self.conn.execute(
                     f"UPDATE foods SET {assignments}, updated_at = datetime('now') "
@@ -134,6 +141,28 @@ class FoodRepository:
             values,
         )
         return cur.fetchone()[0]
+
+    def _replace_food_references(
+        self, *, old_food_id: int, new_food_id: int
+    ) -> None:
+        self.conn.execute(
+            "UPDATE diary_entries SET food_id = ? WHERE food_id = ?",
+            (new_food_id, old_food_id),
+        )
+        for recipe in self.conn.execute(
+            "SELECT id, ingredients FROM recipes ORDER BY id"
+        ):
+            ingredients = json.loads(recipe["ingredients"])
+            changed = False
+            for ingredient in ingredients:
+                if ingredient.get("food_id") == old_food_id:
+                    ingredient["food_id"] = new_food_id
+                    changed = True
+            if changed:
+                self.conn.execute(
+                    "UPDATE recipes SET ingredients = ? WHERE id = ?",
+                    (json.dumps(ingredients), recipe["id"]),
+                )
 
     def get(self, food_id: int, *, user_id: int | None = None) -> dict | None:
         query = "SELECT * FROM foods WHERE id = ?"
