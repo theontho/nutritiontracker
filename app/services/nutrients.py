@@ -3,6 +3,20 @@ from collections.abc import Iterable, Mapping
 from app.models.food import NutrientsPer100
 
 NUTRIENT_FIELDS = tuple(NutrientsPer100.model_fields)
+NET_CARB_DEDUCTIONS = ("fiber_g", "sugar_alcohol_g", "allulose_g")
+
+
+def _nutrient_value(
+    values: Mapping[str, float | int | None], field: str
+) -> float | int | None:
+    value = values.get(field)
+    if field != "net_carbs_g" or value is not None:
+        return value
+    carbs = values.get("carbs_g")
+    if carbs is None:
+        return None
+    deductions = sum(float(values.get(name) or 0) for name in NET_CARB_DEDUCTIONS)
+    return max(float(carbs) - deductions, 0)
 
 
 def scale_nutrients(
@@ -10,7 +24,7 @@ def scale_nutrients(
 ) -> dict[str, float | None]:
     result: dict[str, float | None] = {}
     for field in NUTRIENT_FIELDS:
-        value = values.get(field)
+        value = _nutrient_value(values, field)
         result[field] = None if value is None else round(float(value) * factor, 2)
     return result
 

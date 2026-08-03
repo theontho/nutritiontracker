@@ -71,3 +71,22 @@ def test_entry_nutrients_preserve_unknown_and_measured_zero():
     )
     assert nutrients["fluoride_ug"] is None
     assert nutrients["sodium_mg"] == 0
+
+
+def test_entry_nutrients_derive_missing_net_carbs():
+    nutrients = compute_entry_nutrients(
+        {
+            "carbs_g": 30,
+            "fiber_g": 5,
+            "sugar_alcohol_g": 2,
+            "allulose_g": 1,
+        },
+        50,
+    )
+    assert nutrients["net_carbs_g"] == 11
+
+    explicit = compute_entry_nutrients(
+        {"carbs_g": 30, "fiber_g": 5, "net_carbs_g": 18},
+        50,
+    )
+    assert explicit["net_carbs_g"] == 9
