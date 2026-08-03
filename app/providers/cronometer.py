@@ -276,15 +276,13 @@ def _units_from_crawl_db(directory: Path) -> dict[int, str]:
     """Nutrient units as labelled in the crawl database, for verification."""
     db_path = directory / CRAWL_DB
     if not db_path.exists():
-        return {}
+        raise FileNotFoundError(f"Cronometer export is missing {CRAWL_DB}")
     units: dict[int, str] = {}
     conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     try:
         rows = conn.execute(
             "SELECT enriched_json FROM referenced_items WHERE enriched = 1"
         ).fetchall()
-    except sqlite3.Error:
-        return {}
     finally:
         conn.close()
     for (payload,) in rows:
@@ -338,8 +336,22 @@ def unresolved_food_names(directory: str | Path) -> list[str]:
 def read_cronometer_export(directory: str | Path) -> Iterator[dict]:
     """Yield normalized foods from a personal Cronometer export directory."""
     directory = Path(directory)
-    check_nutrient_units(_units_from_crawl_db(directory))
+    _food_details_dir(directory)
+    units = _units_from_crawl_db(directory)
+    check_nutrient_units(units)
     for document in read_food_documents(directory):
+        required_ids = {
+            int(entry["id"])
+            for entry in document.get("nutrients") or []
+            if entry.get("id") in PUBLISHED_UNITS and entry.get("amount") is not None
+        }
+        missing_ids = sorted(required_ids - units.keys())
+        if missing_ids:
+            missing = ", ".join(str(nutrient_id) for nutrient_id in missing_ids)
+            raise ValueError(
+                f"Cronometer export has no verified unit metadata for nutrient(s): "
+                f"{missing}"
+            )
         food = normalize_cronometer_food(document)
         if food["name"]:
             yield food

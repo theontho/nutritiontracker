@@ -193,6 +193,24 @@ def test_read_export_verifies_units(tmp_path):
         list(read_cronometer_export(tmp_path))
 
 
+def test_read_export_requires_crawl_database(tmp_path):
+    details = tmp_path / "raw" / "mobile" / "food_details" / "objects"
+    details.mkdir(parents=True)
+    (details / "food.json").write_text(json.dumps(ACAI))
+
+    with pytest.raises(FileNotFoundError, match="cronometer.sqlite3"):
+        list(read_cronometer_export(tmp_path))
+
+
+def test_read_export_requires_units_for_every_imported_nutrient(tmp_path):
+    units = dict(PUBLISHED_UNITS)
+    units.pop(324)
+    _write_export(tmp_path, [ACAI], units=units)
+
+    with pytest.raises(ValueError, match="nutrient\\(s\\): 324"):
+        list(read_cronometer_export(tmp_path))
+
+
 def test_read_export_yields_foods(tmp_path):
     _write_export(tmp_path, [ACAI])
     foods = list(read_cronometer_export(tmp_path))
@@ -228,11 +246,12 @@ def test_import_writes_foods_to_the_database(tmp_path):
     conn = get_connection(db_path)
     init_schema(conn)
     row = conn.execute(
-        "SELECT source, source_code, name, vitamin_e_mg, vitamin_d_ug, choline_mg,"
+        "SELECT source, source_code, owner_user_id, name, vitamin_e_mg, vitamin_d_ug, choline_mg,"
         " serving_quantity, serving_size_text FROM foods"
     ).fetchone()
     assert row["source"] == "nccdb"
     assert row["source_code"] == "118907"
+    assert row["owner_user_id"] == 1
     assert row["vitamin_e_mg"] == 14.8
     assert row["vitamin_d_ug"] == pytest.approx(2.0)
     assert row["choline_mg"] is None
@@ -253,3 +272,27 @@ def test_reimport_updates_rather_than_duplicates(tmp_path):
     init_schema(conn)
     assert conn.execute("SELECT COUNT(*) c FROM foods").fetchone()["c"] == 1
     conn.close()
+
+
+def test_two_users_can_import_the_same_private_food_independently(tmp_path):
+    from app.database import get_connection, init_schema
+    from scripts.import_cronometer import import_cronometer
+
+    _write_export(tmp_path, [ACAI])
+    db_path = tmp_path / "test.db"
+    import_cronometer(str(tmp_path), str(db_path), owner_user_id=1)
+
+    conn = get_connection(db_path)
+    init_schema(conn)
+    conn.execute("INSERT INTO users (id, name) VALUES (2, 'Second')")
+    conn.commit()
+    conn.close()
+
+    import_cronometer(str(tmp_path), str(db_path), owner_user_id=2)
+
+    conn = get_connection(db_path)
+    rows = conn.execute(
+        "SELECT owner_user_id FROM foods WHERE source_code = '118907' ORDER BY owner_user_id"
+    ).fetchall()
+    conn.close()
+    assert [row["owner_user_id"] for row in rows] == [1, 2]

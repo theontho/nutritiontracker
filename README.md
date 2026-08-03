@@ -218,8 +218,11 @@ directory containing `cronometer.sqlite3` and a `raw/mobile/food_details/`
 store:
 
 ```bash
-python -m scripts.import_cronometer ~/path/to/cronometer-export
+python -m scripts.import_cronometer ~/path/to/cronometer-export --user-id=1
 ```
+
+`--user-id` defaults to the configured default user. Set it explicitly when
+importing for another account; imported rows remain private to that user.
 
 Provenance is preserved rather than flattened: Cronometer records the upstream
 database per food, so rows land under `nccdb`, `crdb`, `nutritionix`, `nuttab`
