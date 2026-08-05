@@ -30,6 +30,9 @@ def init_schema(conn: sqlite3.Connection) -> None:
             label TEXT NOT NULL,
             publisher TEXT NOT NULL,
             tier INTEGER NOT NULL,
+            data_method TEXT NOT NULL DEFAULT 'unspecified'
+                CHECK(data_method IN ('database-matched', 'label-derived',
+                    'recipe-calculated', 'user-entered', 'unspecified')),
             license TEXT NOT NULL,
             url TEXT NOT NULL DEFAULT '',
             citation TEXT,
@@ -409,12 +412,14 @@ def seed_food_sources(conn: sqlite3.Connection) -> None:
     conn.executemany(
         """
         INSERT INTO food_sources
-            (code, label, publisher, tier, license, url, citation, dataset_version)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (code, label, publisher, tier, data_method, license, url, citation,
+             dataset_version)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(code) DO UPDATE SET
             label = excluded.label,
             publisher = excluded.publisher,
             tier = excluded.tier,
+            data_method = excluded.data_method,
             license = excluded.license,
             url = excluded.url,
             citation = excluded.citation,
@@ -427,6 +432,7 @@ def seed_food_sources(conn: sqlite3.Connection) -> None:
                 s.label,
                 s.publisher,
                 s.tier,
+                s.data_method,
                 s.license,
                 s.url,
                 s.citation,

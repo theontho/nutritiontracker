@@ -21,12 +21,21 @@ registry, so no schema migration is required.
 
 from typing import Literal, NamedTuple
 
+FoodDataMethod = Literal[
+    "database-matched",
+    "label-derived",
+    "recipe-calculated",
+    "user-entered",
+    "unspecified",
+]
+
 
 class FoodSource(NamedTuple):
     code: str
     label: str
     publisher: str
     tier: int
+    data_method: FoodDataMethod
     license: str
     url: str
     citation: str | None = None
@@ -39,6 +48,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="Custom food",
         publisher="User",
         tier=0,
+        data_method="user-entered",
         license="Private to the owning user",
         url="",
     ),
@@ -47,6 +57,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="Recipe",
         publisher="User",
         tier=0,
+        data_method="recipe-calculated",
         license="Private to the owning user",
         url="",
     ),
@@ -55,6 +66,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="USDA Food and Nutrient Database for Dietary Studies (FNDDS)",
         publisher="U.S. Department of Agriculture, Agricultural Research Service",
         tier=1,
+        data_method="database-matched",
         license="Public domain (U.S. Government work)",
         url="https://fdc.nal.usda.gov/",
         citation=(
@@ -68,6 +80,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="USDA FoodData Central Foundation Foods",
         publisher="U.S. Department of Agriculture, Agricultural Research Service",
         tier=2,
+        data_method="database-matched",
         license="Public domain (U.S. Government work)",
         url="https://fdc.nal.usda.gov/food-search?type=Foundation",
         citation=(
@@ -80,6 +93,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="McCance and Widdowson's The Composition of Foods Integrated Dataset (CoFID)",
         publisher="Public Health England / Institute of Food Research",
         tier=2,
+        data_method="database-matched",
         license="Open Government Licence v3.0 (Crown copyright)",
         url="https://www.gov.uk/government/publications/composition-of-foods-integrated-dataset-cofid",
         citation=(
@@ -94,6 +108,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="Canadian Nutrient File (CNF)",
         publisher="Health Canada",
         tier=2,
+        data_method="database-matched",
         license="Open Government Licence - Canada",
         url="https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/nutrient-data/canadian-nutrient-file-about-us.html",
         citation=(
@@ -107,6 +122,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="Frida — Danish Food Composition Database",
         publisher="National Food Institute, Technical University of Denmark",
         tier=2,
+        data_method="database-matched",
         license="CC BY 4.0",
         url="https://frida.fooddata.dk/",
         citation=(
@@ -121,6 +137,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="Australian Food Composition Database (AFCD)",
         publisher="Food Standards Australia New Zealand",
         tier=2,
+        data_method="database-matched",
         license="CC BY 4.0",
         url="https://www.foodstandards.gov.au/science-data/food-nutrient-databases",
         citation=(
@@ -134,6 +151,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="USDA National Nutrient Database for Standard Reference (SR Legacy)",
         publisher="U.S. Department of Agriculture, Agricultural Research Service",
         tier=3,
+        data_method="database-matched",
         license="Public domain (U.S. Government work)",
         url="https://fdc.nal.usda.gov/",
         citation=(
@@ -148,6 +166,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="USDA FoodData Central (unspecified dataset)",
         publisher="U.S. Department of Agriculture, Agricultural Research Service",
         tier=3,
+        data_method="database-matched",
         license="Public domain (U.S. Government work)",
         url="https://fdc.nal.usda.gov/",
         citation=(
@@ -161,6 +180,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="USDA FoodData Central Branded Foods",
         publisher="U.S. Department of Agriculture / food industry data owners",
         tier=4,
+        data_method="label-derived",
         license="Public domain (U.S. Government work)",
         url="https://fdc.nal.usda.gov/",
         citation=(
@@ -173,6 +193,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="Cronometer custom food",
         publisher="User (via personal Cronometer export)",
         tier=0,
+        data_method="user-entered",
         license="Private to the owning user",
         url="",
     ),
@@ -181,6 +202,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="Nutrition Coordinating Center Food and Nutrient Database (NCCDB)",
         publisher="University of Minnesota Nutrition Coordinating Center",
         tier=1,
+        data_method="database-matched",
         license=(
             "Proprietary — licensed to Cronometer. Personal export only: "
             "not redistributable and must not be republished or served publicly."
@@ -196,6 +218,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="NUTTAB (Australian Food Composition Tables)",
         publisher="Food Standards Australia New Zealand",
         tier=2,
+        data_method="database-matched",
         license="Creative Commons Attribution 3.0 Australia",
         url="https://www.foodstandards.gov.au/science-data/food-composition-databases",
         citation=(
@@ -208,6 +231,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="Cronometer Restaurant and Branded Foods Database (CRDB)",
         publisher="Cronometer Software Inc.",
         tier=4,
+        data_method="label-derived",
         license=(
             "Proprietary — Cronometer Software Inc. Personal export only: "
             "not redistributable and must not be republished or served publicly."
@@ -223,6 +247,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="Nutritionix",
         publisher="Nutritionix (Syndigo)",
         tier=4,
+        data_method="label-derived",
         license=(
             "Proprietary — Nutritionix. Personal export only: not "
             "redistributable and must not be republished or served publicly."
@@ -238,6 +263,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="Cronometer export",
         publisher="Cronometer Software Inc.",
         tier=4,
+        data_method="label-derived",
         license=(
             "Mixed upstream licences. Personal export only: not redistributable "
             "and must not be republished or served publicly."
@@ -254,6 +280,7 @@ FOOD_SOURCES: tuple[FoodSource, ...] = (
         label="Open Food Facts",
         publisher="Open Food Facts contributors",
         tier=4,
+        data_method="label-derived",
         license="Open Database License (ODbL) v1.0; contents under DbCL v1.0",
         url="https://world.openfoodfacts.org/",
         citation=(

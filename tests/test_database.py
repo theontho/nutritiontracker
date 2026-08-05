@@ -21,3 +21,14 @@ def test_schema_records_diary_amount_method():
     conn.close()
 
     assert columns["amount_method"][4] == "'unspecified'"
+
+
+def test_schema_records_food_source_data_method():
+    import sqlite3
+
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    columns = {row[1]: row for row in conn.execute("PRAGMA table_info(food_sources)")}
+    conn.close()
+
+    assert columns["data_method"][4] == "'unspecified'"

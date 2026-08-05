@@ -38,11 +38,26 @@ class FoodRepository:
         self, *, source: str, name: str, owner_user_id: int | None = None, **kwargs
     ) -> int:
         other_fields = [
-            "source_code", "brand", "barcode", "image_url", "serving_quantity",
-            "serving_unit", "serving_size_text", "ingredients_text",
-            "allergens_tags", "dietary_tags", "categories_tags", "labels_tags",
-            "countries_tags", "nutriscore_grade", "nova_group", "product_quantity",
-            "product_quantity_unit", "base_quantity", "base_unit", "density_g_per_ml",
+            "source_code",
+            "brand",
+            "barcode",
+            "image_url",
+            "serving_quantity",
+            "serving_unit",
+            "serving_size_text",
+            "ingredients_text",
+            "allergens_tags",
+            "dietary_tags",
+            "categories_tags",
+            "labels_tags",
+            "countries_tags",
+            "nutriscore_grade",
+            "nova_group",
+            "product_quantity",
+            "product_quantity_unit",
+            "base_quantity",
+            "base_unit",
+            "density_g_per_ml",
         ]
         all_fields = other_fields + list(NUTRIENT_FIELDS)
         fields = ["source", "name", "owner_user_id"]
@@ -50,7 +65,9 @@ class FoodRepository:
         for f in all_fields:
             if f in kwargs:
                 fields.append(f)
-                values.append(json.dumps(kwargs[f]) if f.endswith("_tags") else kwargs[f])
+                values.append(
+                    json.dumps(kwargs[f]) if f.endswith("_tags") else kwargs[f]
+                )
         placeholders = ", ".join(["?"] * len(values))
         cols = ", ".join(fields)
         cur = self.conn.execute(
@@ -64,11 +81,26 @@ class FoodRepository:
         source = kwargs.pop("source")
         name = kwargs.pop("name")
         other_fields = [
-            "source_code", "brand", "barcode", "image_url", "serving_quantity",
-            "serving_unit", "serving_size_text", "ingredients_text",
-            "allergens_tags", "dietary_tags", "categories_tags", "labels_tags",
-            "countries_tags", "nutriscore_grade", "nova_group", "product_quantity",
-            "product_quantity_unit", "base_quantity", "base_unit", "density_g_per_ml",
+            "source_code",
+            "brand",
+            "barcode",
+            "image_url",
+            "serving_quantity",
+            "serving_unit",
+            "serving_size_text",
+            "ingredients_text",
+            "allergens_tags",
+            "dietary_tags",
+            "categories_tags",
+            "labels_tags",
+            "countries_tags",
+            "nutriscore_grade",
+            "nova_group",
+            "product_quantity",
+            "product_quantity_unit",
+            "base_quantity",
+            "base_unit",
+            "density_g_per_ml",
         ]
         all_fields = other_fields + list(NUTRIENT_FIELDS)
         fields = ["source", "name"]
@@ -76,7 +108,9 @@ class FoodRepository:
         for f in all_fields:
             if f in kwargs:
                 fields.append(f)
-                values.append(json.dumps(kwargs[f]) if f.endswith("_tags") else kwargs[f])
+                values.append(
+                    json.dumps(kwargs[f]) if f.endswith("_tags") else kwargs[f]
+                )
         placeholders = ", ".join(["?"] * len(values))
         cols = ", ".join(fields)
         conflict_clause = ""
@@ -106,7 +140,9 @@ class FoodRepository:
         row = self.conn.execute(query, values).fetchone()
         return self._deserialize(row)
 
-    def get_by_barcode(self, barcode: str, *, user_id: int | None = None) -> dict | None:
+    def get_by_barcode(
+        self, barcode: str, *, user_id: int | None = None
+    ) -> dict | None:
         query = "SELECT * FROM foods WHERE barcode = ?"
         values: list[int | str] = [barcode]
         if user_id is not None:
@@ -136,8 +172,13 @@ class FoodRepository:
         return " ".join(f'"{term}"*' for term in terms)
 
     def search(
-        self, query: str, *, sources: Sequence[str] | None = None,
-        user_id: int | None = None, limit: int = 20, offset: int = 0,
+        self,
+        query: str,
+        *,
+        sources: Sequence[str] | None = None,
+        user_id: int | None = None,
+        limit: int = 20,
+        offset: int = 0,
     ) -> list[dict]:
         """Full-text matches ordered by relevance, each carrying its bm25 score.
 
@@ -162,7 +203,9 @@ class FoodRepository:
             """SELECT f.*, bm25(foods_fts) AS relevance
                FROM foods_fts fts
                JOIN foods f ON f.id = fts.rowid
-               WHERE foods_fts MATCH ?""" + filters + """
+               WHERE foods_fts MATCH ?"""
+            + filters
+            + """
                ORDER BY rank
                LIMIT ? OFFSET ?""",
             (fts_query, *filter_values, limit, offset),
@@ -173,7 +216,10 @@ class FoodRepository:
         if not kwargs:
             return False
         for field in (
-            "allergens_tags", "dietary_tags", "categories_tags", "labels_tags",
+            "allergens_tags",
+            "dietary_tags",
+            "categories_tags",
+            "labels_tags",
             "countries_tags",
         ):
             if field in kwargs and isinstance(kwargs[field], list):
@@ -195,8 +241,8 @@ class FoodRepository:
     def list_sources(self) -> list[dict]:
         """Registered data sources with how many foods each contributes."""
         rows = self.conn.execute("""
-            SELECT s.code, s.label, s.publisher, s.tier, s.license, s.url,
-                   s.citation, s.dataset_version,
+            SELECT s.code, s.label, s.publisher, s.tier, s.data_method,
+                   s.license, s.url, s.citation, s.dataset_version,
                    (SELECT COUNT(*) FROM foods f WHERE f.source = s.code) AS food_count
             FROM food_sources s
             ORDER BY s.tier, s.code
@@ -208,6 +254,12 @@ class FoodRepository:
         if row is None:
             return None
         food = dict(row)
-        for field in ("allergens_tags", "dietary_tags", "categories_tags", "labels_tags", "countries_tags"):
+        for field in (
+            "allergens_tags",
+            "dietary_tags",
+            "categories_tags",
+            "labels_tags",
+            "countries_tags",
+        ):
             food[field] = json.loads(food[field])
         return food

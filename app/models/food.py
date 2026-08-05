@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from app.sources import SourceType
+from app.sources import FoodDataMethod, SourceType
 
 
 class NutrientsPer100(BaseModel):
@@ -211,6 +211,7 @@ class FoodSourceOut(BaseModel):
     label: str
     publisher: str
     tier: int
+    data_method: FoodDataMethod
     license: str
     url: str = ""
     citation: str | None = None

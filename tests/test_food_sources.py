@@ -16,11 +16,17 @@ from app.sources import (
 def test_every_source_declares_a_licence():
     for source in FOOD_SOURCES:
         assert source.label and source.publisher and source.license
+        assert source.data_method != "unspecified"
 
 
 def test_registry_is_seeded_into_the_database(db):
-    rows = db.execute("SELECT code FROM food_sources").fetchall()
+    rows = db.execute("SELECT code, data_method FROM food_sources").fetchall()
     assert {r["code"] for r in rows} == set(SOURCES_BY_CODE)
+    methods = {r["code"]: r["data_method"] for r in rows}
+    assert methods["custom"] == "user-entered"
+    assert methods["recipe"] == "recipe-calculated"
+    assert methods["usda_foundation"] == "database-matched"
+    assert methods["open_food_facts"] == "label-derived"
 
 
 def test_source_is_a_foreign_key(db):
@@ -63,13 +69,24 @@ def test_dedup_prefers_higher_tier_over_raw_nutrient_count(db):
     repo = FoodRepository(db)
     repo.ensure_fts()
     repo.create(
-        source="open_food_facts", name="Spinach", barcode="55",
-        calories_kcal=23, protein_g=2.9, carbs_g=3.6, fat_g=0.4, sugar_g=0.4,
-        fiber_g=2.2, sodium_mg=79,
+        source="open_food_facts",
+        name="Spinach",
+        barcode="55",
+        calories_kcal=23,
+        protein_g=2.9,
+        carbs_g=3.6,
+        fat_g=0.4,
+        sugar_g=0.4,
+        fiber_g=2.2,
+        sodium_mg=79,
     )
     repo.create(
-        source="usda_fndds", name="Spinach", barcode="55",
-        calories_kcal=23, protein_g=2.9, vitamin_k_ug=482.9,
+        source="usda_fndds",
+        name="Spinach",
+        barcode="55",
+        calories_kcal=23,
+        protein_g=2.9,
+        vitamin_k_ug=482.9,
     )
     svc = FoodSearchService(repo)
     results = svc.search("spinach")
@@ -81,10 +98,16 @@ def test_dedup_prefers_higher_tier_over_raw_nutrient_count(db):
 def test_dedup_falls_back_to_completeness_within_a_tier(db):
     repo = FoodRepository(db)
     repo.ensure_fts()
-    repo.create(source="open_food_facts", name="Yoghurt", barcode="77", calories_kcal=59)
     repo.create(
-        source="open_food_facts", name="Yoghurt Plain", barcode="77",
-        calories_kcal=59, protein_g=10, calcium_mg=110,
+        source="open_food_facts", name="Yoghurt", barcode="77", calories_kcal=59
+    )
+    repo.create(
+        source="open_food_facts",
+        name="Yoghurt Plain",
+        barcode="77",
+        calories_kcal=59,
+        protein_g=10,
+        calcium_mg=110,
     )
     svc = FoodSearchService(repo)
     results = svc.search("yoghurt")
@@ -113,10 +136,13 @@ def test_sources_endpoint_reports_licences_and_counts(client):
     sources = {s["code"]: s for s in resp.json()}
 
     assert sources["custom"]["food_count"] == 1
+    assert sources["custom"]["data_method"] == "user-entered"
     assert sources["usda_fndds"]["tier"] == 1
+    assert sources["usda_fndds"]["data_method"] == "database-matched"
     assert "Public domain" in sources["usda_fndds"]["license"]
     assert "Open Database License" in sources["open_food_facts"]["license"]
     assert sources["open_food_facts"]["citation"]
+    assert sources["open_food_facts"]["data_method"] == "label-derived"
     # Sorted best-quality first.
     tiers = [s["tier"] for s in resp.json()]
     assert tiers == sorted(tiers)
