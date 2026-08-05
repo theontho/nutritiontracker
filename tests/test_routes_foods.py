@@ -16,10 +16,20 @@ def test_search_foods(client, db):
 
 
 def test_get_food(client, db):
-    fid = _seed_food(db, "Banana", calories_kcal=89)
+    fid = _seed_food(
+        db,
+        "Banana",
+        calories_kcal=89,
+        stearic_acid_g=0.462,
+        oleic_acid_cis_g=1.007,
+        dpa_g=0.003,
+    )
     r = client.get(f"/foods/{fid}")
     assert r.status_code == 200
     assert r.json()["name"] == "Banana"
+    assert r.json()["stearic_acid_g"] == 0.462
+    assert r.json()["oleic_acid_cis_g"] == 1.007
+    assert r.json()["dpa_g"] == 0.003
 
 
 def test_get_food_404(client):
@@ -88,8 +98,14 @@ def test_barcode_refresh_stores_a_measured_zero(client, db, monkeypatch):
 
 def test_create_custom_food(client, db):
     FoodRepository(db).ensure_fts()
-    r = client.post("/foods", json={"name": "My Food", "source": "custom",
-                                     "nutrients": {"calories_kcal": 100}})
+    r = client.post(
+        "/foods",
+        json={
+            "name": "My Food",
+            "source": "custom",
+            "nutrients": {"calories_kcal": 100},
+        },
+    )
     assert r.status_code == 201
     assert r.json()["name"] == "My Food"
 

@@ -1,4 +1,55 @@
-from app.providers.food_data_central import normalize_usda_food
+from app.providers.food_data_central import NUTRIENT_MAP, normalize_usda_food
+
+
+USDA_169768_ADDITIONAL_NUTRIENTS = {
+    1062: "energy_kj",
+    1198: "betaine_mg",
+    1104: "vitamin_a_iu",
+    1110: "vitamin_d_iu",
+    1259: "butyric_acid_g",
+    1260: "caproic_acid_g",
+    1261: "caprylic_acid_g",
+    1262: "capric_acid_g",
+    1263: "lauric_acid_g",
+    1264: "myristic_acid_g",
+    1299: "pentadecylic_acid_g",
+    1265: "palmitic_acid_g",
+    1300: "margaric_acid_g",
+    1266: "stearic_acid_g",
+    1267: "arachidic_acid_g",
+    1273: "behenic_acid_g",
+    1301: "lignoceric_acid_g",
+    1274: "myristoleic_acid_g",
+    1333: "pentadecenoic_acid_g",
+    1275: "palmitoleic_acid_g",
+    1314: "sapienic_acid_g",
+    1323: "heptadecenoic_acid_g",
+    1268: "oleic_acid_g",
+    1315: "oleic_acid_cis_g",
+    1277: "gondoic_acid_g",
+    1279: "docosenoic_acid_g",
+    1317: "erucic_acid_g",
+    1312: "nervonic_acid_g",
+    1269: "pufa_18_2_g",
+    1311: "conjugated_linoleic_acid_g",
+    1270: "pufa_18_3_g",
+    1321: "gamma_linolenic_acid_g",
+    1409: "pufa_18_3i_g",
+    1276: "stearidonic_acid_g",
+    1313: "eicosadienoic_acid_g",
+    1325: "pufa_20_3_g",
+    1405: "eicosatrienoic_acid_g",
+    1406: "dihomo_gamma_linolenic_acid_g",
+    1411: "adrenic_acid_g",
+    1280: "dpa_g",
+    1329: "trans_monoenoic_fat_g",
+    1303: "trans_palmitoleic_acid_g",
+    1304: "trans_oleic_acid_g",
+    1305: "trans_erucic_acid_g",
+    1306: "trans_linoleic_acid_g",
+    1331: "trans_polyenoic_fat_g",
+    1058: "theobromine_mg",
+}
 
 
 def test_normalize_usda_food():
@@ -73,6 +124,28 @@ def test_normalize_handles_missing_nutrients():
     }
     food = normalize_usda_food(raw)
     assert food["calories_kcal"] is None
+
+
+def test_normalize_preserves_all_additional_usda_169768_nutrients():
+    assert {
+        nutrient_id: NUTRIENT_MAP[nutrient_id]
+        for nutrient_id in USDA_169768_ADDITIONAL_NUTRIENTS
+    } == USDA_169768_ADDITIONAL_NUTRIENTS
+    raw = {
+        "fdcId": 169768,
+        "description": "Potatoes, mashed, ready-to-eat",
+        "foodNutrients": [
+            {"nutrient": {"id": nutrient_id}, "amount": index / 1000}
+            for index, nutrient_id in enumerate(
+                USDA_169768_ADDITIONAL_NUTRIENTS, start=1
+            )
+        ],
+    }
+
+    food = normalize_usda_food(raw)
+
+    for index, field in enumerate(USDA_169768_ADDITIONAL_NUTRIENTS.values(), start=1):
+        assert food[field] == index / 1000
 
 
 def test_normalize_keeps_measured_zero():

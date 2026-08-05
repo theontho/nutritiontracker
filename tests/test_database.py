@@ -9,7 +9,17 @@ def test_schema_includes_expanded_nutrients():
     columns = {row[1] for row in conn.execute("PRAGMA table_info(foods)")}
     conn.close()
 
-    assert {"caffeine_mg", "riboflavin_mg", "biotin_ug", "chromium_ug"} <= columns
+    assert {
+        "caffeine_mg",
+        "riboflavin_mg",
+        "biotin_ug",
+        "chromium_ug",
+        "stearic_acid_g",
+        "oleic_acid_cis_g",
+        "dpa_g",
+        "betaine_mg",
+        "theobromine_mg",
+    } <= columns
 
 
 def test_schema_records_diary_amount_method():
