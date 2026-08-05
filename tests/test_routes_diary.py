@@ -26,6 +26,23 @@ def test_create_diary_entry(client, db):
     assert created_at.utcoffset().total_seconds() == 0
 
 
+def test_create_diary_entry_records_measured_portion(client, db):
+    fid = _seed(db)
+    response = client.post(
+        "/diary/2026-05-19/entries",
+        json={
+            "food_id": fid,
+            "amount": 118,
+            "unit": "g",
+            "meal_type": "breakfast",
+            "amount_method": "measured",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["amount_method"] == "measured"
+
+
 def test_list_diary(client, db):
     fid = _seed(db)
     client.post("/diary/2026-05-19/entries", json={
@@ -46,6 +63,28 @@ def test_update_diary_entry(client, db):
     r2 = client.patch(f"/diary/entries/{eid}", json={"amount": 200, "unit": "g"})
     assert r2.status_code == 200
     assert r2.json()["grams"] == 200
+
+
+def test_update_diary_entry_records_estimated_portion(client, db):
+    fid = _seed(db)
+    response = client.post(
+        "/diary/2026-05-19/entries",
+        json={
+            "food_id": fid,
+            "amount": 1,
+            "unit": "serving",
+            "meal_type": "breakfast",
+        },
+    )
+    entry_id = response.json()["id"]
+
+    updated = client.patch(
+        f"/diary/entries/{entry_id}",
+        json={"amount_method": "estimated"},
+    )
+
+    assert updated.status_code == 200
+    assert updated.json()["amount_method"] == "estimated"
 
 
 def test_delete_diary_entry(client, db):

@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, field_validator
 
 MealType = Literal["breakfast", "lunch", "dinner", "snack"]
+AmountMethod = Literal["measured", "estimated", "unspecified"]
 
 
 class DiaryEntryCreate(BaseModel):
@@ -11,12 +12,14 @@ class DiaryEntryCreate(BaseModel):
     amount: float
     unit: str
     meal_type: MealType
+    amount_method: AmountMethod = "unspecified"
 
 
 class DiaryEntryUpdate(BaseModel):
     amount: float | None = None
     unit: str | None = None
     meal_type: MealType | None = None
+    amount_method: AmountMethod | None = None
 
 
 class DiaryEntry(BaseModel):
@@ -30,6 +33,7 @@ class DiaryEntry(BaseModel):
     amount: float
     unit: str
     grams: float
+    amount_method: AmountMethod
     nutrients_total: dict
     created_at: datetime
     updated_at: datetime

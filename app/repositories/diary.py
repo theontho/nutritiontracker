@@ -6,16 +6,38 @@ class DiaryRepository:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
 
-    def create(self, *, user_id: int, date: str, meal_type: str,
-               food_id: int, food_snapshot: dict, food_name: str = "",  # populated from food_snapshot["name"] by the route layer; defaults to "" for backward compat
-               amount: float, unit: str, grams: float, nutrients_total: dict) -> int:
+    def create(
+        self,
+        *,
+        user_id: int,
+        date: str,
+        meal_type: str,
+        food_id: int,
+        food_snapshot: dict,
+        food_name: str = "",  # populated from food_snapshot["name"] by the route layer; defaults to "" for backward compat
+        amount: float,
+        unit: str,
+        grams: float,
+        nutrients_total: dict,
+        amount_method: str = "unspecified",
+    ) -> int:
         cur = self.conn.execute(
             """INSERT INTO diary_entries
-               (user_id, date, meal_type, food_id, food_snapshot, food_name, amount, unit, grams, nutrients_total)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (user_id, date, meal_type, food_id,
-             json.dumps(food_snapshot), food_name, amount, unit, grams,
-             json.dumps(nutrients_total)),
+               (user_id, date, meal_type, food_id, food_snapshot, food_name, amount, unit, grams, amount_method, nutrients_total)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                user_id,
+                date,
+                meal_type,
+                food_id,
+                json.dumps(food_snapshot),
+                food_name,
+                amount,
+                unit,
+                grams,
+                amount_method,
+                json.dumps(nutrients_total),
+            ),
         )
         self.conn.commit()
         return cur.lastrowid

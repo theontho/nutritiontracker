@@ -127,6 +127,7 @@ def test_diary_add_posts_entry():
             "amount": 100.0,
             "unit": "g",
             "meal_type": "lunch",
+            "amount_method": "unspecified",
         },
     )
 

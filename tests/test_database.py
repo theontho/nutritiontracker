@@ -10,3 +10,14 @@ def test_schema_includes_expanded_nutrients():
     conn.close()
 
     assert {"caffeine_mg", "riboflavin_mg", "biotin_ug", "chromium_ug"} <= columns
+
+
+def test_schema_records_diary_amount_method():
+    import sqlite3
+
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    columns = {row[1]: row for row in conn.execute("PRAGMA table_info(diary_entries)")}
+    conn.close()
+
+    assert columns["amount_method"][4] == "'unspecified'"

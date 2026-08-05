@@ -9,6 +9,7 @@ import click
 from app.cli.client import CLIContext
 
 MEALS = ["breakfast", "lunch", "dinner", "snack"]
+AMOUNT_METHODS = ["measured", "estimated", "unspecified"]
 POUNDS_PER_KILOGRAM = 2.2046226218
 
 
@@ -382,6 +383,12 @@ def search_diary(context: CLIContext, query: str) -> None:
 @click.option(
     "--date", "entry_date", type=ISO_DATE, default=_today, show_default="today"
 )
+@click.option(
+    "--amount-method",
+    type=click.Choice(AMOUNT_METHODS),
+    default="unspecified",
+    show_default=True,
+)
 @click.pass_obj
 def add_diary_entry(
     context: CLIContext,
@@ -390,6 +397,7 @@ def add_diary_entry(
     unit: str,
     meal_type: str,
     entry_date: date,
+    amount_method: str,
 ) -> None:
     """Log FOOD_ID with an AMOUNT and UNIT."""
     day = _date_string(entry_date)
@@ -401,6 +409,7 @@ def add_diary_entry(
             "amount": amount,
             "unit": unit,
             "meal_type": meal_type,
+            "amount_method": amount_method,
         },
     )
     if context.json_output:
@@ -418,6 +427,7 @@ def add_diary_entry(
 @click.option("--amount", type=click.FloatRange(min=0, min_open=True))
 @click.option("--unit")
 @click.option("--meal", "meal_type", type=click.Choice(MEALS))
+@click.option("--amount-method", type=click.Choice(AMOUNT_METHODS))
 @click.pass_obj
 def update_diary_entry(
     context: CLIContext,
@@ -425,6 +435,7 @@ def update_diary_entry(
     amount: float | None,
     unit: str | None,
     meal_type: str | None,
+    amount_method: str | None,
 ) -> None:
     """Update a diary entry."""
     body = {
@@ -433,11 +444,12 @@ def update_diary_entry(
             "amount": amount,
             "unit": unit,
             "meal_type": meal_type,
+            "amount_method": amount_method,
         }.items()
         if value is not None
     }
     if not body:
-        raise click.UsageError("Provide --amount, --unit, or --meal")
+        raise click.UsageError("Provide --amount, --unit, --meal, or --amount-method")
     result = context.client.request(
         "PATCH",
         f"/diary/entries/{entry_id}",

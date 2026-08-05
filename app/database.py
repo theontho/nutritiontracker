@@ -205,6 +205,8 @@ def init_schema(conn: sqlite3.Connection) -> None:
             amount REAL NOT NULL,
             unit TEXT NOT NULL,
             grams REAL NOT NULL,
+            amount_method TEXT NOT NULL DEFAULT 'unspecified'
+                CHECK(amount_method IN ('measured','estimated','unspecified')),
             nutrients_total TEXT NOT NULL,
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))

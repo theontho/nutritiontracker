@@ -41,6 +41,7 @@ def test_food_create_rejects_invalid_source():
 def test_diary_entry_create():
     e = DiaryEntryCreate(food_id=1, amount=1.5, unit="cup", meal_type="breakfast")
     assert e.meal_type == "breakfast"
+    assert e.amount_method == "unspecified"
 
 
 def test_diary_entry_rejects_invalid_meal_type():

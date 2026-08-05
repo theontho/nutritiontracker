@@ -18,7 +18,11 @@ def _food_repo(request: Request) -> FoodRepository:
     return FoodRepository(request.app.state.db)
 
 
-@router.get("/diary/search", response_model=list[DiaryEntry], summary="Search diary entries by food name")
+@router.get(
+    "/diary/search",
+    response_model=list[DiaryEntry],
+    summary="Search diary entries by food name",
+)
 def search_entries(request: Request, q: str):
     """Search all diary entries where the food name contains the query string (case-insensitive). Returns results newest first."""
     return _diary_repo(request).search_by_food_name(
@@ -26,7 +30,11 @@ def search_entries(request: Request, q: str):
     )
 
 
-@router.get("/diary/{date}", response_model=list[DiaryEntry], summary="List diary entries for a date")
+@router.get(
+    "/diary/{date}",
+    response_model=list[DiaryEntry],
+    summary="List diary entries for a date",
+)
 def list_entries(request: Request, date: str):
     """Get all diary entries for the given date (YYYY-MM-DD format)."""
     return _diary_repo(request).list_by_date(
@@ -34,7 +42,12 @@ def list_entries(request: Request, date: str):
     )
 
 
-@router.post("/diary/{date}/entries", status_code=201, response_model=DiaryEntry, summary="Log a food diary entry")
+@router.post(
+    "/diary/{date}/entries",
+    status_code=201,
+    response_model=DiaryEntry,
+    summary="Log a food diary entry",
+)
 def create_entry(request: Request, date: str, body: DiaryEntryCreate):
     """Log a food to the diary. Automatically converts the amount to grams, computes nutrient totals, and snapshots the food record."""
     food_repo = _food_repo(request)
@@ -44,7 +57,8 @@ def create_entry(request: Request, date: str, body: DiaryEntryCreate):
         raise HTTPException(404, "Food not found")
 
     conversion = convert_to_grams(
-        body.amount, body.unit,
+        body.amount,
+        body.unit,
         density_g_per_ml=food.get("density_g_per_ml"),
         serving_quantity=food.get("serving_quantity"),
         serving_unit=food.get("serving_unit"),
@@ -54,16 +68,26 @@ def create_entry(request: Request, date: str, body: DiaryEntryCreate):
 
     diary_repo = _diary_repo(request)
     entry_id = diary_repo.create(
-        user_id=user_id, date=date,
-        meal_type=body.meal_type, food_id=body.food_id,
-        food_snapshot=snapshot, food_name=snapshot.get("name", ""),
-        amount=body.amount, unit=body.unit, grams=conversion.grams,
+        user_id=user_id,
+        date=date,
+        meal_type=body.meal_type,
+        food_id=body.food_id,
+        food_snapshot=snapshot,
+        food_name=snapshot.get("name", ""),
+        amount=body.amount,
+        unit=body.unit,
+        grams=conversion.grams,
+        amount_method=body.amount_method,
         nutrients_total=nutrients,
     )
     return diary_repo.get(entry_id)
 
 
-@router.patch("/diary/entries/{entry_id}", response_model=DiaryEntry, summary="Update a diary entry")
+@router.patch(
+    "/diary/entries/{entry_id}",
+    response_model=DiaryEntry,
+    summary="Update a diary entry",
+)
 def update_entry(request: Request, entry_id: int, body: DiaryEntryUpdate):
     """Update the amount, unit, or meal type of a diary entry. Nutrient totals are recomputed if amount or unit changes."""
     diary_repo = _diary_repo(request)
@@ -77,7 +101,8 @@ def update_entry(request: Request, entry_id: int, body: DiaryEntryUpdate):
         amount = updates.get("amount", entry["amount"])
         unit = updates.get("unit", entry["unit"])
         conversion = convert_to_grams(
-            amount, unit,
+            amount,
+            unit,
             density_g_per_ml=food.get("density_g_per_ml"),
             serving_quantity=food.get("serving_quantity"),
             serving_unit=food.get("serving_unit"),
@@ -89,7 +114,9 @@ def update_entry(request: Request, entry_id: int, body: DiaryEntryUpdate):
     return diary_repo.get(entry_id)
 
 
-@router.delete("/diary/entries/{entry_id}", status_code=204, summary="Delete a diary entry")
+@router.delete(
+    "/diary/entries/{entry_id}", status_code=204, summary="Delete a diary entry"
+)
 def delete_entry(request: Request, entry_id: int):
     """Delete a diary entry by ID."""
     diary_repo = _diary_repo(request)
