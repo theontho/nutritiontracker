@@ -35,8 +35,13 @@ def test_user_tokens_isolate_personal_data_and_custom_foods(client, db, monkeypa
     assert custom_response.status_code == 201
     custom_food_id = custom_response.json()["id"]
 
-    assert client.get(f"/foods/{custom_food_id}", headers=_admin_headers()).status_code == 404
-    assert client.get(f"/foods/{custom_food_id}", headers=user_headers).status_code == 200
+    assert (
+        client.get(f"/foods/{custom_food_id}", headers=_admin_headers()).status_code
+        == 404
+    )
+    assert (
+        client.get(f"/foods/{custom_food_id}", headers=user_headers).status_code == 200
+    )
 
     diary_response = client.post(
         "/diary/2026-08-01/entries",
@@ -96,12 +101,50 @@ def test_single_user_mode_rejects_alternate_user_token(client, db, monkeypatch):
 
 def test_multi_user_without_a_token_is_refused_at_startup():
     """The combination would make every anonymous caller an admin."""
-    with pytest.raises(ValidationError, match="NT_MULTI_USER_ENABLED requires NT_BEARER_TOKEN"):
+    with pytest.raises(
+        ValidationError, match="NT_MULTI_USER_ENABLED requires NT_BEARER_TOKEN"
+    ):
         Settings(multi_user_enabled=True, bearer_token=None)
+
+
+def test_local_token_requires_a_distinct_primary_token():
+    with pytest.raises(ValidationError, match="requires NT_BEARER_TOKEN"):
+        Settings(local_bearer_token="local-token", bearer_token=None)
+
+    with pytest.raises(ValidationError, match="must differ"):
+        Settings(local_bearer_token="same-token", bearer_token="same-token")
+
+
+def test_loopback_token_uses_default_user_without_admin_access(
+    loopback_client, monkeypatch
+):
+    monkeypatch.setattr(settings, "bearer_token", "admin-token")
+    monkeypatch.setattr(settings, "local_bearer_token", "local-token")
+    monkeypatch.setattr(settings, "multi_user_enabled", True)
+
+    headers = {"Authorization": "Bearer local-token"}
+    assert loopback_client.get("/diary/2026-08-01", headers=headers).status_code == 200
+    assert loopback_client.get("/users", headers=headers).status_code == 403
+
+
+def test_loopback_token_is_rejected_from_non_loopback_client(
+    remote_client, monkeypatch
+):
+    monkeypatch.setattr(settings, "bearer_token", "admin-token")
+    monkeypatch.setattr(settings, "local_bearer_token", "local-token")
+    monkeypatch.setattr(settings, "multi_user_enabled", True)
+
+    response = remote_client.get(
+        "/diary/2026-08-01",
+        headers={"Authorization": "Bearer local-token"},
+    )
+
+    assert response.status_code == 401
 
 
 def test_unauthenticated_deployment_grants_no_admin(client, monkeypatch):
     monkeypatch.setattr(settings, "bearer_token", None)
+    monkeypatch.setattr(settings, "local_bearer_token", None)
     monkeypatch.setattr(settings, "multi_user_enabled", True)
 
     assert client.get("/users").status_code == 403

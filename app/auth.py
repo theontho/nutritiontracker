@@ -1,4 +1,5 @@
 import hashlib
+import ipaddress
 import secrets
 from typing import Annotated
 
@@ -15,11 +16,36 @@ def _token_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def _is_loopback_request(request: Request) -> bool:
+    if request.client is None:
+        return False
+    try:
+        return ipaddress.ip_address(request.client.host).is_loopback
+    except ValueError:
+        return False
+
+
 def require_auth(
     request: Request,
     credentials: Credentials = None,
 ) -> None:
     """Resolve the bearer token to a user identity."""
+    if (
+        credentials is not None
+        and settings.local_bearer_token
+        and secrets.compare_digest(
+            credentials.credentials.encode(),
+            settings.local_bearer_token.encode(),
+        )
+    ):
+        if not _is_loopback_request(request):
+            raise HTTPException(
+                status_code=401, detail="Invalid or missing bearer token"
+            )
+        request.state.user_id = settings.default_user_id
+        request.state.is_admin = False
+        return
+
     if not settings.bearer_token:
         # Nothing to authenticate against, so every caller is anonymous and none
         # of them is an admin. Settings rejects this alongside multi-user mode.

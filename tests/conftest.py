@@ -20,3 +20,17 @@ def client(db, monkeypatch):
     monkeypatch.setattr("app.main.get_connection", lambda *args, **kwargs: db)
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture
+def loopback_client(db, monkeypatch):
+    monkeypatch.setattr("app.main.get_connection", lambda *args, **kwargs: db)
+    with TestClient(app, client=("127.0.0.1", 50000)) as c:
+        yield c
+
+
+@pytest.fixture
+def remote_client(db, monkeypatch):
+    monkeypatch.setattr("app.main.get_connection", lambda *args, **kwargs: db)
+    with TestClient(app, client=("192.0.2.10", 50000)) as c:
+        yield c

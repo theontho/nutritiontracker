@@ -127,8 +127,13 @@ bin/install-systemd             # provision the host, then start the service
 
 The installer is idempotent and safe to re-run. It clones the checkout, creates
 the virtualenv, generates `/etc/nutritiontracker/nutritiontracker.env` with a
-fresh bearer token on first run only, applies migrations, then renders and
-enables the unit. Re-running never rotates an existing token.
+fresh admin bearer token on first run only, and writes a separate loopback-only
+token to `~/.config/nutritiontracker/config.json` with mode `0600`. The local
+token maps to the default user but never grants user-administration access and
+is rejected when the socket peer is not loopback. The installed CLI loads this
+file automatically, so local agents can run ordinary nutrition commands without
+reading the root-only service environment. Re-running never rotates existing
+tokens.
 
 The unit is generated from
 [`deploy/systemd/nutritiontracker.service.template`](deploy/systemd/nutritiontracker.service.template),
@@ -201,7 +206,9 @@ pytest tests/
 ## CLI
 
 Installing the package provides the `nutritiontracker` command. It connects to
-`http://127.0.0.1:8000` by default; use environment variables for another
+`http://127.0.0.1:8000` by default and automatically loads
+`~/.config/nutritiontracker/config.json` when present. Flags override environment
+variables, which override that file. Use environment variables for another
 deployment:
 
 ```bash
@@ -218,6 +225,15 @@ nutritiontracker weight add 180 --unit lb
 nutritiontracker events list --start 2026-08-01
 nutritiontracker kitchen inventory list --search tomato
 ```
+
+The local config format is:
+
+```json
+{"base_url":"http://127.0.0.1:8000","token":"replace-with-a-local-token"}
+```
+
+Keep token-bearing config files at mode `0600`; the CLI refuses broader
+permissions. Override the location with `--config` or `NT_CONFIG`.
 
 Pass `--json` before the command for machine-readable output, such as
 `nutritiontracker --json stats daily`.

@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 
 import httpx
@@ -73,6 +74,77 @@ def test_api_client_sends_bearer_token():
         APIClient("https://example.test", "secret").request("GET", "/health")
 
     assert request.call_args.kwargs["headers"] == {"Authorization": "Bearer secret"}
+
+
+def test_cli_loads_loopback_connection_from_private_config(tmp_path):
+    config_path = tmp_path / "config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "base_url": "http://127.0.0.1:8123",
+                "token": "local-token",
+            }
+        )
+    )
+    config_path.chmod(0o600)
+
+    with patch("app.cli.main.APIClient") as client_class:
+        client_class.return_value.request.return_value = {
+            "status": "ok",
+            "version": "0.1.0",
+        }
+        result = runner.invoke(cli, ["--config", str(config_path), "health"])
+
+    assert result.exit_code == 0
+    client_class.assert_called_once_with(
+        base_url="http://127.0.0.1:8123",
+        token="local-token",
+    )
+
+
+def test_cli_environment_overrides_local_config(tmp_path):
+    config_path = tmp_path / "config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "base_url": "http://127.0.0.1:8123",
+                "token": "config-token",
+            }
+        )
+    )
+    config_path.chmod(0o600)
+
+    with patch("app.cli.main.APIClient") as client_class:
+        client_class.return_value.request.return_value = {
+            "status": "ok",
+            "version": "0.1.0",
+        }
+        result = runner.invoke(
+            cli,
+            ["--config", str(config_path), "health"],
+            env={
+                "NT_BASE_URL": "https://nutrition.example.test",
+                "NT_BEARER_TOKEN": "environment-token",
+            },
+        )
+
+    assert result.exit_code == 0
+    client_class.assert_called_once_with(
+        base_url="https://nutrition.example.test",
+        token="environment-token",
+    )
+
+
+def test_cli_rejects_token_config_with_open_permissions(tmp_path):
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps({"token": "local-token"}))
+    config_path.chmod(0o644)
+
+    result = runner.invoke(cli, ["--config", str(config_path), "health"])
+
+    assert result.exit_code == 1
+    assert "chmod 600" in result.output
+    assert "local-token" not in result.output
 
 
 def test_api_errors_are_reported_without_traceback():

@@ -26,6 +26,7 @@ GROUP="${NT_DEPLOY_GROUP:-$NT_DEPLOY_USER}"
 BIND_HOST="${NT_BIND_HOST:-127.0.0.1}"
 PORT="${NT_APP_PORT:-8000}"
 ENV_FILE="${NT_DEPLOY_ENV_FILE:-/etc/nutritiontracker/nutritiontracker.env}"
+LOCAL_CLI_CONFIG="${NT_LOCAL_CLI_CONFIG-auto}"
 MEMORY_HIGH="${NT_MEMORY_HIGH:-512M}"
 MEMORY_MAX="${NT_MEMORY_MAX:-768M}"
 TASKS_MAX="${NT_TASKS_MAX:-64}"
@@ -83,7 +84,7 @@ fi
 '$NT_DEPLOY_DIR/.venv/bin/pip' install -q --upgrade pip
 '$NT_DEPLOY_DIR/.venv/bin/pip' install -q -e .
 
-# 3. Environment file. Preserved if it already exists so the token is stable.
+# 3. Environment file. Preserved if it already exists so the tokens are stable.
 #    The check runs under sudo because the directory is usually root-only, and
 #    an unprivileged test would silently fall through and rotate the token.
 #    It also has to fail closed: a truncated or hand-edited file that no longer
@@ -100,19 +101,55 @@ if sudo test -f '$ENV_FILE'; then
     exit 1
   fi
 else
-  echo 'Generating $ENV_FILE with a fresh bearer token'
+  echo 'Generating $ENV_FILE with fresh bearer tokens'
   TOKEN=\$('$NT_DEPLOY_DIR/.venv/bin/python' -c 'import secrets; print(secrets.token_urlsafe(32))')
-  printf 'NT_DB_PATH=%s\nNT_BEARER_TOKEN=%s\nNT_MULTI_USER_ENABLED=%s\n' \
-    '$NT_DEPLOY_DB' \"\$TOKEN\" '${NT_MULTI_USER_ENABLED:-true}' \
+  LOCAL_TOKEN=\$('$NT_DEPLOY_DIR/.venv/bin/python' -c 'import secrets; print(secrets.token_urlsafe(32))')
+  printf 'NT_DB_PATH=%s\nNT_BEARER_TOKEN=%s\nNT_LOCAL_BEARER_TOKEN=%s\nNT_MULTI_USER_ENABLED=%s\n' \
+    '$NT_DEPLOY_DB' \"\$TOKEN\" \"\$LOCAL_TOKEN\" '${NT_MULTI_USER_ENABLED:-true}' \
     | sudo tee '$ENV_FILE' >/dev/null
+fi
+
+LOCAL_TOKEN_COUNT=\$(sudo grep -Ec '^NT_LOCAL_BEARER_TOKEN=.+' '$ENV_FILE' || true)
+if [[ \"\$LOCAL_TOKEN_COUNT\" -eq 0 ]]; then
+  echo 'Adding a loopback-only bearer token to $ENV_FILE'
+  LOCAL_TOKEN=\$('$NT_DEPLOY_DIR/.venv/bin/python' -c 'import secrets; print(secrets.token_urlsafe(32))')
+  printf '\nNT_LOCAL_BEARER_TOKEN=%s\n' \"\$LOCAL_TOKEN\" | sudo tee -a '$ENV_FILE' >/dev/null
+elif [[ \"\$LOCAL_TOKEN_COUNT\" -ne 1 ]]; then
+  echo 'ERROR: $ENV_FILE declares NT_LOCAL_BEARER_TOKEN more than once.' >&2
+  echo 'Refusing to choose between ambiguous local credentials.' >&2
+  exit 1
 fi
 sudo chown root:'$GROUP' '$ENV_FILE'
 sudo chmod 640 '$ENV_FILE'
 
-# 4. Schema.
+# 4. Private local CLI config. This token authenticates only requests whose
+#    socket peer is loopback and never grants user-administration access.
+if [[ '$LOCAL_CLI_CONFIG' != '' ]]; then
+  USER_HOME=\$(getent passwd '$NT_DEPLOY_USER' | cut -d: -f6)
+  if [[ -z \"\$USER_HOME\" ]]; then
+    echo 'ERROR: could not resolve home directory for $NT_DEPLOY_USER' >&2
+    exit 1
+  fi
+  CLI_CONFIG='$LOCAL_CLI_CONFIG'
+  if [[ \"\$CLI_CONFIG\" == 'auto' ]]; then
+    CLI_CONFIG=\"\$USER_HOME/.config/nutritiontracker/config.json\"
+  fi
+  LOCAL_TOKEN=\$(sudo sed -n 's/^NT_LOCAL_BEARER_TOKEN=//p' '$ENV_FILE')
+  if [[ -z \"\$LOCAL_TOKEN\" ]]; then
+    echo 'ERROR: failed to read NT_LOCAL_BEARER_TOKEN from $ENV_FILE' >&2
+    exit 1
+  fi
+  CLI_CONFIG_DIR=\$(dirname \"\$CLI_CONFIG\")
+  sudo -u '$NT_DEPLOY_USER' install -d -m 700 \"\$CLI_CONFIG_DIR\"
+  printf '{\"base_url\":\"http://127.0.0.1:$PORT\",\"token\":\"%s\"}\n' \"\$LOCAL_TOKEN\" \
+    | sudo -u '$NT_DEPLOY_USER' install -m 600 /dev/stdin \"\$CLI_CONFIG\"
+  echo \"Installed private local CLI config at \$CLI_CONFIG\"
+fi
+
+# 5. Schema.
 NT_DB_PATH='$NT_DEPLOY_DB' '$NT_DEPLOY_DIR/.venv/bin/alembic' upgrade head
 
-# 5. Unit.
+# 6. Unit.
 sudo install -o root -g root -m 644 /tmp/$NT_DEPLOY_SERVICE.service \
   /etc/systemd/system/$NT_DEPLOY_SERVICE.service
 rm -f /tmp/$NT_DEPLOY_SERVICE.service
