@@ -7,6 +7,7 @@ from app.auth import current_user_id
 from app.models.kitchen import (
     FavoriteMeal,
     FavoriteMealCreate,
+    FavoriteMealUpdate,
     InventoryItem,
     InventoryItemCreate,
     MealMatch,
@@ -95,13 +96,17 @@ def delete_inventory_item(request: Request, item_id: int):
 
 
 @router.post(
-    "/meals", status_code=201, response_model=FavoriteMeal, summary="Create favorite meal"
+    "/meals",
+    status_code=201,
+    response_model=FavoriteMeal,
+    summary="Create favorite meal",
 )
 def create_favorite_meal(request: Request, body: FavoriteMealCreate):
     ingredients = [_ingredient_payload(item) for item in body.ingredients]
     return _repo(request).create_favorite_meal(
         user_id=current_user_id(request),
         name=body.name,
+        is_private=body.is_private,
         tags=body.tags,
         prep_time_minutes=body.prep_time_minutes,
         effort=body.effort,
@@ -114,6 +119,22 @@ def create_favorite_meal(request: Request, body: FavoriteMealCreate):
 @router.get("/meals", response_model=list[FavoriteMeal], summary="List favorite meals")
 def list_favorite_meals(request: Request):
     return _repo(request).list_favorite_meals(user_id=current_user_id(request))
+
+
+@router.patch(
+    "/meals/{meal_id}",
+    response_model=FavoriteMeal,
+    summary="Update favorite meal privacy",
+)
+def update_favorite_meal(request: Request, meal_id: int, body: FavoriteMealUpdate):
+    meal = _repo(request).update_favorite_meal_privacy(
+        user_id=current_user_id(request),
+        meal_id=meal_id,
+        is_private=body.is_private,
+    )
+    if not meal:
+        raise HTTPException(404, "Favorite meal not found")
+    return meal
 
 
 @router.post(
@@ -188,9 +209,7 @@ def generate_shopping_list(request: Request, body: ShoppingGenerateRequest):
     repo = _repo(request)
     meals = []
     for meal_id in body.meal_ids:
-        meal = repo.get_favorite_meal(
-            user_id=current_user_id(request), meal_id=meal_id
-        )
+        meal = repo.get_favorite_meal(user_id=current_user_id(request), meal_id=meal_id)
         if not meal:
             raise HTTPException(404, f"Favorite meal {meal_id} not found")
         meals.append(meal)

@@ -42,3 +42,15 @@ def test_schema_records_food_source_data_method():
     conn.close()
 
     assert columns["data_method"][4] == "'unspecified'"
+
+
+def test_schema_records_definition_privacy_flags():
+    import sqlite3
+
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    for table in ("event_types", "foods", "recipes", "favorite_meals"):
+        columns = {row[1]: row for row in conn.execute(f"PRAGMA table_info({table})")}
+        assert columns["is_private"][3] == 1
+        assert columns["is_private"][4] == "0"
+    conn.close()

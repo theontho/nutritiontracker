@@ -13,6 +13,7 @@ class KitchenRepository:
         if not row:
             return None
         meal = dict(row)
+        meal["is_private"] = bool(meal["is_private"])
         meal["tags"] = json.loads(meal["tags"])
         meal["ingredients"] = self.list_meal_ingredients(meal["id"])
         return meal
@@ -85,7 +86,7 @@ class KitchenRepository:
             values.append(query)
         rows = self.conn.execute(
             f"""SELECT * FROM kitchen_inventory_items
-                WHERE {' AND '.join(clauses)}
+                WHERE {" AND ".join(clauses)}
                 ORDER BY status = 'use_soon' DESC, display_name ASC""",
             values,
         ).fetchall()
@@ -104,6 +105,7 @@ class KitchenRepository:
         *,
         user_id: int,
         name: str,
+        is_private: bool = False,
         tags: list[str],
         ingredients: list[dict],
         prep_time_minutes: int | None = None,
@@ -113,11 +115,13 @@ class KitchenRepository:
     ) -> dict:
         cur = self.conn.execute(
             """INSERT INTO favorite_meals
-               (user_id, name, tags, prep_time_minutes, effort, favorite_score, nutrition_template_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+               (user_id, name, is_private, tags, prep_time_minutes, effort,
+                favorite_score, nutrition_template_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 user_id,
                 name,
+                int(is_private),
                 json.dumps(tags),
                 prep_time_minutes,
                 effort,
@@ -155,6 +159,20 @@ class KitchenRepository:
             (user_id,),
         ).fetchall()
         return [self._meal_row(row) for row in rows]
+
+    def update_favorite_meal_privacy(
+        self, *, user_id: int, meal_id: int, is_private: bool
+    ) -> dict | None:
+        cur = self.conn.execute(
+            """UPDATE favorite_meals
+               SET is_private = ?, updated_at = datetime('now')
+               WHERE user_id = ? AND id = ?""",
+            (int(is_private), user_id, meal_id),
+        )
+        self.conn.commit()
+        if cur.rowcount == 0:
+            return None
+        return self.get_favorite_meal(user_id=user_id, meal_id=meal_id)
 
     def list_meal_ingredients(self, meal_id: int) -> list[dict]:
         rows = self.conn.execute(

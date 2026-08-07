@@ -10,6 +10,12 @@ OpenAPI schema is served at `/openapi.json` on your own deployment.
 
 REST API for logging food, weight, activity, events, and journal entries. Designed to be called by AI agents or mobile clients.
 
+Reusable user definitions expose a first-class `is_private` boolean. This
+applies to event types, food catalog items, recipes, and favorite meals.
+Logged events and diary responses also expose the current privacy of their
+referenced definition, while immutable food snapshots retain the value that
+was present when the entry was logged.
+
 Key endpoints:
 - `GET /foods/search?q=` — full-text search across USDA + OpenFoodFacts + custom foods
 - `GET /foods/sources` — data sources behind the catalog, with licence, citation and quality tier

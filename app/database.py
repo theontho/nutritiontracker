@@ -46,6 +46,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
             source TEXT NOT NULL REFERENCES food_sources(code),
             source_code TEXT,
             owner_user_id INTEGER REFERENCES users(id),
+            is_private INTEGER NOT NULL DEFAULT 0 CHECK(is_private IN (0, 1)),
             name TEXT NOT NULL,
             brand TEXT,
             barcode TEXT,
@@ -265,6 +266,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS recipes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL DEFAULT 1,
+            is_private INTEGER NOT NULL DEFAULT 0 CHECK(is_private IN (0, 1)),
             name TEXT NOT NULL,
             servings REAL NOT NULL,
             total_weight_g REAL NOT NULL,
@@ -293,6 +295,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS favorite_meals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL DEFAULT 1,
+            is_private INTEGER NOT NULL DEFAULT 0 CHECK(is_private IN (0, 1)),
             name TEXT NOT NULL,
             tags TEXT NOT NULL DEFAULT '[]',
             prep_time_minutes INTEGER,
@@ -375,6 +378,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS event_types (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL DEFAULT 1,
+            is_private INTEGER NOT NULL DEFAULT 0 CHECK(is_private IN (0, 1)),
             name TEXT NOT NULL,
             unit TEXT,
             notes TEXT,

@@ -39,6 +39,7 @@ class FoodRepository:
     ) -> int:
         other_fields = [
             "source_code",
+            "is_private",
             "brand",
             "barcode",
             "image_url",
@@ -82,6 +83,7 @@ class FoodRepository:
         name = kwargs.pop("name")
         other_fields = [
             "source_code",
+            "is_private",
             "brand",
             "barcode",
             "image_url",
@@ -254,6 +256,7 @@ class FoodRepository:
         if row is None:
             return None
         food = dict(row)
+        food["is_private"] = bool(food["is_private"])
         for field in (
             "allergens_tags",
             "dietary_tags",

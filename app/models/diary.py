@@ -28,6 +28,7 @@ class DiaryEntry(BaseModel):
     date: str
     meal_type: MealType
     food_id: int
+    food_is_private: bool
     food_snapshot: dict
     food_name: str
     amount: float

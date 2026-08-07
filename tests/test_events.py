@@ -3,6 +3,7 @@
 Nothing here is nutrition- or fitness-specific by design; the type registry is
 empty until the user fills it.
 """
+
 import pytest
 
 
@@ -22,9 +23,17 @@ def test_no_event_types_are_seeded(client):
 
 
 def test_define_a_type_and_log_an_event(client):
-    event_type = _make_type(client)
+    event_type = client.post(
+        "/events/types",
+        json={
+            "name": "Red light therapy",
+            "unit": "minutes",
+            "is_private": True,
+        },
+    ).json()
     assert event_type["name"] == "Red light therapy"
     assert event_type["unit"] == "minutes"
+    assert event_type["is_private"] is True
 
     response = client.post(
         "/events",
@@ -38,6 +47,7 @@ def test_define_a_type_and_log_an_event(client):
     assert response.status_code == 201, response.text
     event = response.json()
     assert event["event_type_name"] == "Red light therapy"
+    assert event["event_type_is_private"] is True
     assert event["value"] == 5
     assert event["unit"] == "minutes"
     assert event["notes"] == "panel at 18 inches"
@@ -107,6 +117,19 @@ def test_editing_a_type_unit_leaves_logged_events_alone(client):
     assert client.get(f"/events/types/{event_type['id']}").json()["unit"] == "sessions"
 
 
+def test_event_type_privacy_can_be_updated(client):
+    event_type = _make_type(client, name="Personal activity")
+    assert event_type["is_private"] is False
+
+    updated = client.patch(
+        f"/events/types/{event_type['id']}",
+        json={"is_private": True},
+    )
+
+    assert updated.status_code == 200
+    assert updated.json()["is_private"] is True
+
+
 def test_duplicate_type_names_are_rejected(client):
     _make_type(client, name="Meditation")
     response = client.post("/events/types", json={"name": "Meditation"})
@@ -119,9 +142,7 @@ def test_blank_type_names_are_rejected(client):
 
 
 def test_logging_against_an_unknown_type_is_rejected(client):
-    response = client.post(
-        "/events", json={"event_type_id": 999, "date": "2026-08-02"}
-    )
+    response = client.post("/events", json={"event_type_id": 999, "date": "2026-08-02"})
     assert response.status_code == 404
 
 
@@ -218,7 +239,9 @@ def test_summary_never_adds_across_units(client):
 def test_summary_reports_null_when_nothing_was_measured(client):
     """No values recorded is not the same as a total of zero."""
     event_type = _make_type(client, name="Headache", unit=None)
-    client.post("/events", json={"event_type_id": event_type["id"], "date": "2026-08-02"})
+    client.post(
+        "/events", json={"event_type_id": event_type["id"], "date": "2026-08-02"}
+    )
 
     row = client.get("/events/summary").json()[0]
     assert row["count"] == 1
@@ -285,21 +308,39 @@ def test_events_are_isolated_between_users(client, monkeypatch):
     assert client.get("/events/summary", headers=other_headers).json() == []
     assert len(client.get("/events/types", headers=other_headers).json()) == 1
 
-    assert client.get(f"/events/types/{mine['id']}", headers=other_headers).status_code == 404
-    assert client.patch(
-        f"/events/types/{mine['id']}", headers=other_headers, json={"unit": "hours"}
-    ).status_code == 404
-    assert client.delete(
-        f"/events/types/{mine['id']}", headers=other_headers
-    ).status_code == 404
+    assert (
+        client.get(f"/events/types/{mine['id']}", headers=other_headers).status_code
+        == 404
+    )
+    assert (
+        client.patch(
+            f"/events/types/{mine['id']}", headers=other_headers, json={"unit": "hours"}
+        ).status_code
+        == 404
+    )
+    assert (
+        client.delete(f"/events/types/{mine['id']}", headers=other_headers).status_code
+        == 404
+    )
 
     my_event_id = client.get("/events", headers=admin_headers).json()[0]["id"]
-    assert client.get(f"/events/{my_event_id}", headers=other_headers).status_code == 404
-    assert client.delete(f"/events/{my_event_id}", headers=other_headers).status_code == 404
+    assert (
+        client.get(f"/events/{my_event_id}", headers=other_headers).status_code == 404
+    )
+    assert (
+        client.delete(f"/events/{my_event_id}", headers=other_headers).status_code
+        == 404
+    )
 
     # Nothing the other user attempted changed anything.
-    assert client.get(f"/events/{my_event_id}", headers=admin_headers).json()["value"] == 20
-    assert client.get(f"/events/types/{mine['id']}", headers=admin_headers).json()["unit"] == "minutes"
+    assert (
+        client.get(f"/events/{my_event_id}", headers=admin_headers).json()["value"]
+        == 20
+    )
+    assert (
+        client.get(f"/events/types/{mine['id']}", headers=admin_headers).json()["unit"]
+        == "minutes"
+    )
 
 
 def test_cannot_log_an_event_against_someone_elses_type(client, monkeypatch):
@@ -338,7 +379,11 @@ def test_time_of_day_is_normalized_and_junk_rejected(client):
 
     junk = client.post(
         "/events",
-        json={"event_type_id": event_type["id"], "date": "2026-08-02", "at": "afternoon"},
+        json={
+            "event_type_id": event_type["id"],
+            "date": "2026-08-02",
+            "at": "afternoon",
+        },
     )
     assert junk.status_code == 422
 

@@ -52,6 +52,7 @@ class FavoriteMealIngredient(BaseModel):
 
 class FavoriteMealCreate(BaseModel):
     name: str
+    is_private: bool = False
     tags: list[str] = Field(default_factory=list)
     prep_time_minutes: int | None = None
     effort: EffortLevel | None = None
@@ -60,9 +61,14 @@ class FavoriteMealCreate(BaseModel):
     ingredients: list[FavoriteMealIngredientInput] = Field(default_factory=list)
 
 
+class FavoriteMealUpdate(BaseModel):
+    is_private: bool
+
+
 class FavoriteMeal(BaseModel):
     id: int
     user_id: int
+    is_private: bool
     name: str
     tags: list[str]
     prep_time_minutes: int | None = None

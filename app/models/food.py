@@ -200,6 +200,7 @@ __all__ = [
 class FoodCreate(BaseModel):
     source: SourceType = "custom"
     source_code: str | None = None
+    is_private: bool = False
     name: str
     brand: str | None = None
     barcode: str | None = None
@@ -230,6 +231,7 @@ class Food(FoodCreate):
 
 
 class FoodUpdate(BaseModel):
+    is_private: bool | None = None
     name: str | None = None
     brand: str | None = None
     barcode: str | None = None
@@ -272,6 +274,7 @@ class FoodOut(BaseModel):
     id: int
     source: SourceType
     source_code: str | None = None
+    is_private: bool
     name: str
     brand: str | None = None
     barcode: str | None = None

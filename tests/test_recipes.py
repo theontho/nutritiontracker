@@ -36,3 +36,28 @@ def test_recipe_nutrients():
     assert abs(per_serving["calories_kcal"] - 235) < 0.1
     assert per_100["fluoride_ug"] is None
     assert per_serving["menaquinone_7_ug"] is None
+
+
+def test_recipe_privacy_round_trips(client):
+    food = client.post(
+        "/foods",
+        json={"source": "custom", "name": "Ingredient"},
+    ).json()
+    recipe = client.post(
+        "/recipes",
+        json={
+            "name": "Private recipe",
+            "is_private": True,
+            "servings": 1,
+            "total_weight_g": 100,
+            "ingredients": [{"food_id": food["id"], "amount": 100, "unit": "g"}],
+        },
+    ).json()
+    assert recipe["is_private"] is True
+
+    updated = client.patch(
+        f"/recipes/{recipe['id']}",
+        json={"is_private": False},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["is_private"] is False

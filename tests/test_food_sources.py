@@ -161,3 +161,28 @@ def test_custom_food_reports_unknown_nutrients_as_null(client):
     assert body["fat_g"] == 100
     assert body["protein_g"] == 0
     assert body["vitamin_k_ug"] is None
+
+
+def test_custom_food_privacy_is_exposed_and_snapshotted(client):
+    food = client.post(
+        "/foods",
+        json={
+            "source": "custom",
+            "name": "Private supplement",
+            "is_private": True,
+        },
+    ).json()
+    assert food["is_private"] is True
+
+    entry = client.post(
+        "/diary/2026-08-07/entries",
+        json={
+            "food_id": food["id"],
+            "amount": 1,
+            "unit": "g",
+            "meal_type": "breakfast",
+        },
+    ).json()
+
+    assert entry["food_is_private"] is True
+    assert entry["food_snapshot"]["is_private"] is True

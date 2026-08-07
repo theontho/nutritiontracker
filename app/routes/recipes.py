@@ -28,18 +28,21 @@ def _resolve_ingredients(
         if not food:
             raise HTTPException(404, f"Food {ing.food_id} not found")
         conversion = convert_to_grams(
-            ing.amount, ing.unit,
+            ing.amount,
+            ing.unit,
             density_g_per_ml=food.get("density_g_per_ml"),
             serving_quantity=food.get("serving_quantity"),
             serving_unit=food.get("serving_unit"),
         )
-        resolved.append({
-            "food_id": ing.food_id,
-            "food_snapshot": build_food_snapshot(food),
-            "amount": ing.amount,
-            "unit": ing.unit,
-            "grams": conversion.grams,
-        })
+        resolved.append(
+            {
+                "food_id": ing.food_id,
+                "food_snapshot": build_food_snapshot(food),
+                "amount": ing.amount,
+                "unit": ing.unit,
+                "grams": conversion.grams,
+            }
+        )
     return resolved
 
 
@@ -49,14 +52,18 @@ def create_recipe(request: Request, body: RecipeCreate):
     food_repo = _food_repo(request)
     recipe_repo = _recipe_repo(request)
 
-    resolved = _resolve_ingredients(food_repo, body.ingredients, current_user_id(request))
+    resolved = _resolve_ingredients(
+        food_repo, body.ingredients, current_user_id(request)
+    )
     per_100, per_serving = compute_recipe_nutrients(
         resolved, body.total_weight_g, body.servings
     )
 
     recipe_id = recipe_repo.create(
         user_id=current_user_id(request),
-        name=body.name, servings=body.servings,
+        name=body.name,
+        is_private=body.is_private,
+        servings=body.servings,
         total_weight_g=body.total_weight_g,
         ingredients=resolved,
         nutrients_per_100=per_100,
@@ -98,7 +105,9 @@ def update_recipe(request: Request, recipe_id: int, body: RecipeUpdate):
         )
         total_weight = updates.get("total_weight_g", recipe["total_weight_g"])
         servings = updates.get("servings", recipe["servings"])
-        per_100, per_serving = compute_recipe_nutrients(resolved, total_weight, servings)
+        per_100, per_serving = compute_recipe_nutrients(
+            resolved, total_weight, servings
+        )
         updates["ingredients"] = resolved
         updates["nutrients_per_100"] = per_100
         updates["nutrients_per_serving"] = per_serving

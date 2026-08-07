@@ -39,6 +39,7 @@ class EventTypeCreate(BaseModel):
     name: str = Field(max_length=200)
     unit: Optional[str] = Field(default=None, max_length=50)
     notes: Optional[str] = None
+    is_private: bool = False
 
     @field_validator("name")
     @classmethod
@@ -59,6 +60,7 @@ class EventTypeUpdate(BaseModel):
     name: Optional[str] = Field(default=None, max_length=200)
     unit: Optional[str] = Field(default=None, max_length=50)
     notes: Optional[str] = None
+    is_private: Optional[bool] = None
 
     @field_validator("name")
     @classmethod
@@ -74,6 +76,7 @@ class EventType(BaseModel):
     name: str
     unit: Optional[str]
     notes: Optional[str]
+    is_private: bool
     created_at: str
     updated_at: str
 
@@ -122,6 +125,7 @@ class Event(BaseModel):
     user_id: int
     event_type_id: int
     event_type_name: str
+    event_type_is_private: bool
     date: str
     at: Optional[str]
     value: Optional[float]
@@ -136,6 +140,7 @@ class Event(BaseModel):
 class EventSummaryRow(BaseModel):
     event_type_id: int
     event_type_name: str
+    event_type_is_private: bool
     unit: Optional[str]
     count: int
     unmeasured_count: int

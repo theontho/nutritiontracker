@@ -9,11 +9,19 @@ class EventTypeRepository:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
 
-    def create(self, *, user_id: int, name: str, unit: str | None,
-               notes: str | None) -> int:
+    def create(
+        self,
+        *,
+        user_id: int,
+        name: str,
+        unit: str | None,
+        notes: str | None,
+        is_private: bool = False,
+    ) -> int:
         cur = self.conn.execute(
-            "INSERT INTO event_types (user_id, name, unit, notes) VALUES (?, ?, ?, ?)",
-            (user_id, name, unit, notes),
+            """INSERT INTO event_types (user_id, name, unit, notes, is_private)
+               VALUES (?, ?, ?, ?, ?)""",
+            (user_id, name, unit, notes, int(is_private)),
         )
         self.conn.commit()
         return cur.lastrowid
@@ -40,8 +48,10 @@ class EventTypeRepository:
         return [dict(row) for row in rows]
 
     def update(self, type_id: int, *, user_id: int, **updates) -> None:
-        allowed = {"name", "unit", "notes"}
+        allowed = {"name", "unit", "notes", "is_private"}
         fields = {k: v for k, v in updates.items() if k in allowed}
+        if "is_private" in fields:
+            fields["is_private"] = int(fields["is_private"])
         if not fields:
             return
         assignments = ", ".join(f"{k} = ?" for k in fields)
@@ -77,14 +87,23 @@ class EventRepository:
         self.conn = conn
 
     _SELECT = """
-        SELECT e.*, t.name AS event_type_name
+        SELECT e.*, t.name AS event_type_name,
+               t.is_private AS event_type_is_private
         FROM events e
         JOIN event_types t ON t.id = e.event_type_id
     """
 
-    def create(self, *, user_id: int, event_type_id: int, date: str,
-               at: str | None, value: float | None, unit: str | None,
-               notes: str | None) -> int:
+    def create(
+        self,
+        *,
+        user_id: int,
+        event_type_id: int,
+        date: str,
+        at: str | None,
+        value: float | None,
+        unit: str | None,
+        notes: str | None,
+    ) -> int:
         cur = self.conn.execute(
             """INSERT INTO events (user_id, event_type_id, date, at, value, unit, notes)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -100,9 +119,16 @@ class EventRepository:
         ).fetchone()
         return dict(row) if row else None
 
-    def list(self, *, user_id: int, start: str | None = None,
-             end: str | None = None, event_type_id: int | None = None,
-             limit: int = 100, offset: int = 0) -> list[dict]:
+    def list(
+        self,
+        *,
+        user_id: int,
+        start: str | None = None,
+        end: str | None = None,
+        event_type_id: int | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict]:
         clauses = ["e.user_id = ?"]
         params: list = [user_id]
         if start is not None:
@@ -142,8 +168,9 @@ class EventRepository:
         )
         self.conn.commit()
 
-    def summary(self, *, user_id: int, start: str | None = None,
-                end: str | None = None) -> list[dict]:
+    def summary(
+        self, *, user_id: int, start: str | None = None, end: str | None = None
+    ) -> list[dict]:
         """Per type and unit: how many events, and the total where measured.
 
         Grouped by unit as well as type because a type whose unit changed
@@ -164,14 +191,15 @@ class EventRepository:
             SELECT
                 e.event_type_id                                   AS event_type_id,
                 t.name                                            AS event_type_name,
+                t.is_private                                      AS event_type_is_private,
                 e.unit                                            AS unit,
                 COUNT(*)                                          AS count,
                 SUM(CASE WHEN e.value IS NULL THEN 1 ELSE 0 END)  AS unmeasured_count,
                 SUM(e.value)                                      AS total_value
             FROM events e
             JOIN event_types t ON t.id = e.event_type_id
-            WHERE {' AND '.join(clauses)}
-            GROUP BY e.event_type_id, e.unit
+            WHERE {" AND ".join(clauses)}
+            GROUP BY e.event_type_id, t.is_private, e.unit
             ORDER BY t.name, e.unit
             """,
             params,

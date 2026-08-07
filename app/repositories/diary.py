@@ -6,6 +6,12 @@ class DiaryRepository:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
 
+    _SELECT = """
+        SELECT d.*, f.is_private AS food_is_private
+        FROM diary_entries d
+        JOIN foods f ON f.id = d.food_id
+    """
+
     def create(
         self,
         *,
@@ -44,7 +50,7 @@ class DiaryRepository:
 
     def get(self, entry_id: int) -> dict | None:
         row = self.conn.execute(
-            "SELECT * FROM diary_entries WHERE id = ?", (entry_id,)
+            f"{self._SELECT} WHERE d.id = ?", (entry_id,)
         ).fetchone()
         if not row:
             return None
@@ -55,7 +61,7 @@ class DiaryRepository:
 
     def list_by_date(self, *, user_id: int, date: str) -> list[dict]:
         rows = self.conn.execute(
-            "SELECT * FROM diary_entries WHERE user_id = ? AND date = ? ORDER BY created_at",
+            f"{self._SELECT} WHERE d.user_id = ? AND d.date = ? ORDER BY d.created_at",
             (user_id, date),
         ).fetchall()
         results = []
@@ -73,9 +79,10 @@ class DiaryRepository:
         This is a full table scan on diary_entries — acceptable for single-user personal-scale data.
         """
         rows = self.conn.execute(
-            """SELECT * FROM diary_entries
-               WHERE user_id = ? AND LOWER(food_name) LIKE '%' || LOWER(?) || '%'
-               ORDER BY date DESC, created_at DESC""",
+            f"""{self._SELECT}
+               WHERE d.user_id = ?
+                 AND LOWER(d.food_name) LIKE '%' || LOWER(?) || '%'
+               ORDER BY d.date DESC, d.created_at DESC""",
             (user_id, query),
         ).fetchall()
         results = []

@@ -62,7 +62,8 @@ def _activity_line(row: dict[str, Any]) -> str:
 
 def _event_type_line(row: dict[str, Any]) -> str:
     unit = f" ({row['unit']})" if row.get("unit") else ""
-    return f"[{row['id']}] {row['name']}{unit}"
+    privacy = " [private]" if row.get("is_private") else ""
+    return f"[{row['id']}] {row['name']}{unit}{privacy}"
 
 
 def _event_line(row: dict[str, Any]) -> str:
@@ -386,18 +387,24 @@ def get_event_type(context: CLIContext, type_id: int) -> None:
 @click.argument("name")
 @click.option("--unit")
 @click.option("--notes")
+@click.option("--private", "is_private", is_flag=True)
 @click.pass_obj
 def create_event_type(
     context: CLIContext,
     name: str,
     unit: str | None,
     notes: str | None,
+    is_private: bool,
 ) -> None:
     """Create an event type."""
     result = context.client.request(
         "POST",
         "/events/types",
-        json={"name": name, **_params(unit=unit, notes=notes)},
+        json={
+            "name": name,
+            "is_private": is_private,
+            **_params(unit=unit, notes=notes),
+        },
     )
     _echo_json(result)
 

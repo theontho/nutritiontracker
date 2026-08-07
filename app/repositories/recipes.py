@@ -6,17 +6,33 @@ class RecipeRepository:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
 
-    def create(self, *, user_id: int, name: str, servings: float,
-               total_weight_g: float, ingredients: list[dict],
-               nutrients_per_100: dict, nutrients_per_serving: dict) -> int:
+    def create(
+        self,
+        *,
+        user_id: int,
+        name: str,
+        is_private: bool = False,
+        servings: float,
+        total_weight_g: float,
+        ingredients: list[dict],
+        nutrients_per_100: dict,
+        nutrients_per_serving: dict,
+    ) -> int:
         cur = self.conn.execute(
             """INSERT INTO recipes
-               (user_id, name, servings, total_weight_g, ingredients,
+               (user_id, name, is_private, servings, total_weight_g, ingredients,
                 nutrients_per_100, nutrients_per_serving)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (user_id, name, servings, total_weight_g,
-             json.dumps(ingredients), json.dumps(nutrients_per_100),
-             json.dumps(nutrients_per_serving)),
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                user_id,
+                name,
+                int(is_private),
+                servings,
+                total_weight_g,
+                json.dumps(ingredients),
+                json.dumps(nutrients_per_100),
+                json.dumps(nutrients_per_serving),
+            ),
         )
         self.conn.commit()
         return cur.lastrowid
@@ -53,6 +69,8 @@ class RecipeRepository:
         for k in ("ingredients", "nutrients_per_100", "nutrients_per_serving"):
             if k in kwargs and isinstance(kwargs[k], (dict, list)):
                 kwargs[k] = json.dumps(kwargs[k])
+        if "is_private" in kwargs:
+            kwargs["is_private"] = int(kwargs["is_private"])
         sets = ", ".join(f"{k} = ?" for k in kwargs)
         values = list(kwargs.values()) + [recipe_id]
         self.conn.execute(

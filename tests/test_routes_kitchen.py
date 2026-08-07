@@ -23,6 +23,7 @@ def test_create_favorite_meal_and_get_matches(client):
         "/kitchen/meals",
         json={
             "name": "Spinach Eggs",
+            "is_private": True,
             "tags": ["breakfast", "high_protein"],
             "effort": "low",
             "favorite_score": 3,
@@ -33,6 +34,14 @@ def test_create_favorite_meal_and_get_matches(client):
         },
     )
     assert r.status_code == 201
+    assert r.json()["is_private"] is True
+
+    updated = client.patch(
+        f"/kitchen/meals/{r.json()['id']}",
+        json={"is_private": False},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["is_private"] is False
 
     matches = client.post("/kitchen/matches", json={"effort": "low"})
     assert matches.status_code == 200

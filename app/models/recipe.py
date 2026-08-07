@@ -15,6 +15,7 @@ class RecipeIngredient(RecipeIngredientInput):
 
 class RecipeCreate(BaseModel):
     name: str
+    is_private: bool = False
     servings: float
     total_weight_g: float
     ingredients: list[RecipeIngredientInput]
@@ -22,6 +23,7 @@ class RecipeCreate(BaseModel):
 
 class RecipeUpdate(BaseModel):
     name: str | None = None
+    is_private: bool | None = None
     servings: float | None = None
     total_weight_g: float | None = None
     ingredients: list[RecipeIngredientInput] | None = None
@@ -30,6 +32,7 @@ class RecipeUpdate(BaseModel):
 class Recipe(BaseModel):
     id: int
     user_id: int
+    is_private: bool
     name: str
     servings: float
     total_weight_g: float

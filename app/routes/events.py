@@ -29,8 +29,9 @@ def _events(request: Request) -> EventRepository:
 # "summary" are not parsed as an event id.
 
 
-@router.post("/types", response_model=EventType, status_code=201,
-             summary="Define an event type")
+@router.post(
+    "/types", response_model=EventType, status_code=201, summary="Define an event type"
+)
 def create_event_type(request: Request, body: EventTypeCreate):
     """Define a category of event to log against.
 
@@ -41,7 +42,11 @@ def create_event_type(request: Request, body: EventTypeCreate):
     repo = _types(request)
     try:
         type_id = repo.create(
-            user_id=user_id, name=body.name, unit=body.unit, notes=body.notes
+            user_id=user_id,
+            name=body.name,
+            unit=body.unit,
+            notes=body.notes,
+            is_private=body.is_private,
         )
     except sqlite3.IntegrityError:
         raise HTTPException(
@@ -66,8 +71,9 @@ def get_event_type(request: Request, type_id: int):
     return event_type
 
 
-@router.patch("/types/{type_id}", response_model=EventType,
-              summary="Update an event type")
+@router.patch(
+    "/types/{type_id}", response_model=EventType, summary="Update an event type"
+)
 def update_event_type(request: Request, type_id: int, body: EventTypeUpdate):
     """Partially update an event type.
 
@@ -121,8 +127,9 @@ def delete_event_type(
     repo.delete(type_id, user_id=user_id, cascade=cascade)
 
 
-@router.get("/summary", response_model=list[EventSummaryRow],
-            summary="Summarize events by type")
+@router.get(
+    "/summary", response_model=list[EventSummaryRow], summary="Summarize events by type"
+)
 def summarize_events(
     request: Request,
     start: str | None = Query(default=None, description="Earliest date, YYYY-MM-DD"),
