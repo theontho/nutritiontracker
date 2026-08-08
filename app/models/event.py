@@ -1,94 +1,174 @@
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 EventMeasurementKind = Literal["generic", "bristol_stool", "urine_color", "mood"]
-MoodValence = Literal["positive", "negative", "mixed"]
-MoodEnergy = Literal["high", "low"]
 MOOD_CATEGORIES = (
     "happy",
+    "amused",
     "excited",
     "hopeful",
+    "inspired",
     "proud",
     "calm",
     "content",
     "grateful",
     "relieved",
+    "affectionate",
+    "connected",
+    "compassionate",
     "sad",
+    "disappointed",
+    "grieving",
     "low",
     "tired",
     "lonely",
     "bored",
     "anxious",
+    "afraid",
+    "insecure",
     "angry",
+    "frustrated",
+    "resentful",
     "overwhelmed",
     "disgusted",
+    "embarrassed",
+    "ashamed",
+    "guilty",
     "surprised",
+    "awed",
     "confused",
 )
 MoodCategory = Literal[
     "happy",
+    "amused",
     "excited",
     "hopeful",
+    "inspired",
     "proud",
     "calm",
     "content",
     "grateful",
     "relieved",
+    "affectionate",
+    "connected",
+    "compassionate",
     "sad",
+    "disappointed",
+    "grieving",
     "low",
     "tired",
     "lonely",
     "bored",
     "anxious",
+    "afraid",
+    "insecure",
     "angry",
+    "frustrated",
+    "resentful",
     "overwhelmed",
     "disgusted",
+    "embarrassed",
+    "ashamed",
+    "guilty",
     "surprised",
+    "awed",
     "confused",
 ]
+MoodCaptureMode = Literal["spontaneous", "scheduled", "reconstructed"]
+MoodRegulation = Literal[
+    "situation_selection",
+    "situation_change",
+    "attention_shift",
+    "reappraisal",
+    "response_support",
+]
+MoodPleasantness = Literal[-3, -2, -1, 0, 1, 2, 3]
+MoodEnergy = Literal[-2, -1, 0, 1, 2]
 
-_MOOD_DIMENSIONS: dict[MoodCategory, tuple[MoodValence, MoodEnergy]] = {
-    "happy": ("positive", "high"),
-    "excited": ("positive", "high"),
-    "hopeful": ("positive", "high"),
-    "proud": ("positive", "high"),
-    "calm": ("positive", "low"),
-    "content": ("positive", "low"),
-    "grateful": ("positive", "low"),
-    "relieved": ("positive", "low"),
-    "sad": ("negative", "low"),
-    "low": ("negative", "low"),
-    "tired": ("negative", "low"),
-    "lonely": ("negative", "low"),
-    "bored": ("negative", "low"),
-    "anxious": ("negative", "high"),
-    "angry": ("negative", "high"),
-    "overwhelmed": ("negative", "high"),
-    "disgusted": ("negative", "high"),
-    "surprised": ("mixed", "high"),
-    "confused": ("mixed", "low"),
+_LEGACY_DIMENSIONS: dict[MoodCategory, tuple[MoodPleasantness, MoodEnergy]] = {
+    "happy": (2, 1),
+    "excited": (2, 2),
+    "hopeful": (2, 1),
+    "proud": (2, 1),
+    "calm": (2, -1),
+    "content": (2, -1),
+    "grateful": (2, -1),
+    "relieved": (2, -1),
+    "sad": (-2, -1),
+    "low": (-2, -2),
+    "tired": (-1, -2),
+    "lonely": (-2, -1),
+    "bored": (-1, -2),
+    "anxious": (-2, 2),
+    "angry": (-2, 2),
+    "overwhelmed": (-2, 2),
+    "disgusted": (-2, 1),
+    "surprised": (0, 2),
+    "confused": (-1, -1),
 }
 
 
-class MoodState(BaseModel):
-    primary: MoodCategory
-    secondary: MoodCategory | None = None
+class MoodLabel(BaseModel):
+    category: MoodCategory
     intensity: Literal[1, 2, 3] = 2
-    valence: MoodValence | None = None
-    energy: MoodEnergy | None = None
+
+
+class MoodState(BaseModel):
+    version: Literal[2] = 2
+    pleasantness: MoodPleasantness
+    energy: MoodEnergy
+    capture_mode: MoodCaptureMode = "spontaneous"
+    labels: list[MoodLabel] = Field(default_factory=list, max_length=6)
+    stress: Literal[0, 1, 2, 3, 4] | None = None
+    motivation: Literal[-2, -1, 0, 1, 2] | None = None
+    functional_impact: Literal[0, 1, 2, 3] | None = None
+    context_tags: list[Annotated[str, Field(max_length=40)]] = Field(
+        default_factory=list, max_length=8
+    )
+    body_cues: list[Annotated[str, Field(max_length=40)]] = Field(
+        default_factory=list, max_length=8
+    )
+    regulation: list[MoodRegulation] = Field(default_factory=list, max_length=5)
+    duration_minutes: int | None = Field(default=None, ge=1, le=1440)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _upgrade_legacy_mood(cls, value: object) -> object:
+        if not isinstance(value, dict) or "primary" not in value:
+            return value
+        primary = value["primary"]
+        if primary not in _LEGACY_DIMENSIONS:
+            return value
+        intensity = value.get("intensity", 2)
+        labels = [{"category": primary, "intensity": intensity}]
+        secondary = value.get("secondary")
+        if secondary is not None:
+            labels.append({"category": secondary, "intensity": intensity})
+        pleasantness, energy = _LEGACY_DIMENSIONS[primary]
+        return {
+            "version": 2,
+            "pleasantness": pleasantness,
+            "energy": energy,
+            "capture_mode": "spontaneous",
+            "labels": labels,
+        }
 
     @model_validator(mode="after")
-    def _normalize_dimensions(self) -> "MoodState":
-        if self.secondary == self.primary:
-            raise ValueError("secondary mood must differ from primary mood")
-        expected_valence, expected_energy = _MOOD_DIMENSIONS[self.primary]
-        if self.valence not in (None, expected_valence):
-            raise ValueError("mood valence does not match primary mood")
-        if self.energy not in (None, expected_energy):
-            raise ValueError("mood energy does not match primary mood")
-        self.valence = expected_valence
-        self.energy = expected_energy
+    def _validate_collections(self) -> "MoodState":
+        categories = [label.category for label in self.labels]
+        if len(categories) != len(set(categories)):
+            raise ValueError("mood labels must be unique")
+        for field in ("context_tags", "body_cues"):
+            values = getattr(self, field)
+            normalized = [item.strip() for item in values]
+            if any(not item for item in normalized):
+                raise ValueError(f"{field} must not contain blank values")
+            if len({item.casefold() for item in normalized}) != len(normalized):
+                raise ValueError(f"{field} must contain unique values")
+            setattr(self, field, normalized)
+        if len(self.regulation) != len(set(self.regulation)):
+            raise ValueError("regulation strategies must be unique")
         return self
 
 

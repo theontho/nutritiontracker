@@ -130,7 +130,7 @@ def test_event_type_privacy_can_be_updated(client):
     assert updated.json()["is_private"] is True
 
 
-def test_mood_events_preserve_category_blend_intensity_and_dimensions(client):
+def test_mood_events_preserve_dimensions_labels_and_optional_context(client):
     event_type = client.post(
         "/events/types",
         json={"name": "Mood", "measurement_kind": "mood"},
@@ -143,9 +143,20 @@ def test_mood_events_preserve_category_blend_intensity_and_dimensions(client):
             "date": "2026-08-07",
             "at": "13:44",
             "mood": {
-                "primary": "overwhelmed",
-                "secondary": "tired",
-                "intensity": 2,
+                "pleasantness": -2,
+                "energy": 1,
+                "capture_mode": "scheduled",
+                "labels": [
+                    {"category": "overwhelmed", "intensity": 3},
+                    {"category": "tired", "intensity": 2},
+                ],
+                "stress": 3,
+                "motivation": -1,
+                "functional_impact": 2,
+                "context_tags": ["work", "poor sleep"],
+                "body_cues": ["heavy eyes"],
+                "regulation": ["situation_change", "reappraisal"],
+                "duration_minutes": 90,
             },
             "notes": "Executive functioning is low.",
         },
@@ -155,13 +166,61 @@ def test_mood_events_preserve_category_blend_intensity_and_dimensions(client):
     event = response.json()
     assert event["event_type_measurement_kind"] == "mood"
     assert event["mood"] == {
-        "primary": "overwhelmed",
-        "secondary": "tired",
-        "intensity": 2,
-        "valence": "negative",
-        "energy": "high",
+        "version": 2,
+        "pleasantness": -2,
+        "energy": 1,
+        "capture_mode": "scheduled",
+        "labels": [
+            {"category": "overwhelmed", "intensity": 3},
+            {"category": "tired", "intensity": 2},
+        ],
+        "stress": 3,
+        "motivation": -1,
+        "functional_impact": 2,
+        "context_tags": ["work", "poor sleep"],
+        "body_cues": ["heavy eyes"],
+        "regulation": ["situation_change", "reappraisal"],
+        "duration_minutes": 90,
     }
     assert client.get(f"/events/{event['id']}").json()["mood"] == event["mood"]
+
+
+def test_legacy_mood_payload_is_upgraded_for_compatibility(client):
+    event_type = client.post(
+        "/events/types",
+        json={"name": "Mood", "measurement_kind": "mood"},
+    ).json()
+    response = client.post(
+        "/events",
+        json={
+            "event_type_id": event_type["id"],
+            "date": "2026-08-07",
+            "mood": {
+                "primary": "overwhelmed",
+                "secondary": "tired",
+                "intensity": 2,
+            },
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json()["mood"] == {
+        "version": 2,
+        "pleasantness": -2,
+        "energy": 2,
+        "capture_mode": "spontaneous",
+        "labels": [
+            {"category": "overwhelmed", "intensity": 2},
+            {"category": "tired", "intensity": 2},
+        ],
+        "stress": None,
+        "motivation": None,
+        "functional_impact": None,
+        "context_tags": [],
+        "body_cues": [],
+        "regulation": [],
+        "duration_minutes": None,
+    }
 
 
 @pytest.mark.parametrize(
@@ -171,7 +230,72 @@ def test_mood_events_preserve_category_blend_intensity_and_dimensions(client):
         ({"value": 2}, "do not use value"),
         (
             {"mood": {"primary": "happy", "secondary": "happy"}},
-            "secondary mood must differ",
+            "mood labels must be unique",
+        ),
+        (
+            {
+                "mood": {
+                    "pleasantness": 1,
+                    "energy": 0,
+                    "context_tags": ["work", "WORK"],
+                }
+            },
+            "context_tags must contain unique",
+        ),
+        (
+            {"mood": {"pleasantness": 4, "energy": 0}},
+            "Input should be -3, -2, -1, 0, 1, 2 or 3",
+        ),
+        (
+            {
+                "mood": {
+                    "pleasantness": 1,
+                    "energy": 0,
+                    "labels": [
+                        {"category": category}
+                        for category in (
+                            "happy",
+                            "amused",
+                            "excited",
+                            "hopeful",
+                            "inspired",
+                            "proud",
+                            "calm",
+                        )
+                    ],
+                }
+            },
+            "List should have at most 6 items",
+        ),
+        (
+            {
+                "mood": {
+                    "pleasantness": 1,
+                    "energy": 0,
+                    "body_cues": [" "],
+                }
+            },
+            "body_cues must not contain blank",
+        ),
+        (
+            {
+                "mood": {
+                    "pleasantness": 1,
+                    "energy": 0,
+                    "regulation": ["reappraisal", "reappraisal"],
+                }
+            },
+            "regulation strategies must be unique",
+        ),
+        (
+            {
+                "mood": {
+                    "pleasantness": 1,
+                    "energy": 0,
+                    "duration_minutes": 1441,
+                }
+            },
+            "less than or equal to 1440",
         ),
     ],
 )

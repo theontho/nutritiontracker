@@ -21,6 +21,27 @@ def _params(**values: Any) -> dict[str, Any]:
     return {key: value for key, value in values.items() if value is not None}
 
 
+def _mood_label(value: str) -> dict[str, str | int]:
+    category, separator, raw_intensity = value.partition(":")
+    if category not in MOOD_CATEGORIES:
+        raise click.BadParameter(
+            f"unknown mood label '{category}'",
+            param_hint="--mood-label",
+        )
+    if not separator:
+        return {"category": category, "intensity": 2}
+    try:
+        intensity = int(raw_intensity)
+    except ValueError:
+        intensity = 0
+    if intensity not in {1, 2, 3}:
+        raise click.BadParameter(
+            "intensity must be 1, 2, or 3",
+            param_hint="--mood-label",
+        )
+    return {"category": category, "intensity": intensity}
+
+
 def _output(
     context: CLIContext,
     data: Any,
@@ -389,6 +410,12 @@ def get_event_type(context: CLIContext, type_id: int) -> None:
 @click.option("--unit")
 @click.option("--notes")
 @click.option("--private", "is_private", is_flag=True)
+@click.option(
+    "--measurement-kind",
+    type=click.Choice(["generic", "bristol_stool", "urine_color", "mood"]),
+    default="generic",
+    show_default=True,
+)
 @click.pass_obj
 def create_event_type(
     context: CLIContext,
@@ -396,6 +423,7 @@ def create_event_type(
     unit: str | None,
     notes: str | None,
     is_private: bool,
+    measurement_kind: str,
 ) -> None:
     """Create an event type."""
     result = context.client.request(
@@ -404,6 +432,7 @@ def create_event_type(
         json={
             "name": name,
             "is_private": is_private,
+            "measurement_kind": measurement_kind,
             **_params(unit=unit, notes=notes),
         },
     )
@@ -503,9 +532,37 @@ def get_event(context: CLIContext, event_id: int) -> None:
 @click.option("--value", type=float)
 @click.option("--unit")
 @click.option("--notes")
-@click.option("--mood-primary", type=click.Choice(MOOD_CATEGORIES))
-@click.option("--mood-secondary", type=click.Choice(MOOD_CATEGORIES))
-@click.option("--mood-intensity", type=click.IntRange(1, 3), default=2)
+@click.option("--mood-pleasantness", type=click.IntRange(-3, 3))
+@click.option("--mood-energy", type=click.IntRange(-2, 2))
+@click.option(
+    "--mood-label",
+    multiple=True,
+    metavar="CATEGORY[:INTENSITY]",
+    help="Repeat for co-occurring labels; intensity defaults to 2.",
+)
+@click.option(
+    "--mood-capture-mode",
+    type=click.Choice(["spontaneous", "scheduled", "reconstructed"]),
+)
+@click.option("--mood-stress", type=click.IntRange(0, 4))
+@click.option("--mood-motivation", type=click.IntRange(-2, 2))
+@click.option("--mood-functional-impact", type=click.IntRange(0, 3))
+@click.option("--mood-context", multiple=True)
+@click.option("--mood-body-cue", multiple=True)
+@click.option(
+    "--mood-regulation",
+    multiple=True,
+    type=click.Choice(
+        [
+            "situation_selection",
+            "situation_change",
+            "attention_shift",
+            "reappraisal",
+            "response_support",
+        ]
+    ),
+)
+@click.option("--mood-duration", type=click.IntRange(1, 1440))
 @click.pass_obj
 def add_event(
     context: CLIContext,
@@ -515,11 +572,38 @@ def add_event(
     value: float | None,
     unit: str | None,
     notes: str | None,
-    mood_primary: str | None,
-    mood_secondary: str | None,
-    mood_intensity: int,
+    mood_pleasantness: int | None,
+    mood_energy: int | None,
+    mood_label: tuple[str, ...],
+    mood_capture_mode: str | None,
+    mood_stress: int | None,
+    mood_motivation: int | None,
+    mood_functional_impact: int | None,
+    mood_context: tuple[str, ...],
+    mood_body_cue: tuple[str, ...],
+    mood_regulation: tuple[str, ...],
+    mood_duration: int | None,
 ) -> None:
     """Log an event."""
+    has_mood_details = bool(
+        mood_label
+        or mood_capture_mode is not None
+        or mood_stress is not None
+        or mood_motivation is not None
+        or mood_functional_impact is not None
+        or mood_context
+        or mood_body_cue
+        or mood_regulation
+        or mood_duration is not None
+    )
+    if (mood_pleasantness is None) != (mood_energy is None):
+        raise click.UsageError(
+            "--mood-pleasantness and --mood-energy must be provided together"
+        )
+    if has_mood_details and mood_pleasantness is None:
+        raise click.UsageError(
+            "mood detail options require --mood-pleasantness and --mood-energy"
+        )
     result = context.client.request(
         "POST",
         "/events",
@@ -529,12 +613,23 @@ def add_event(
             **(
                 {
                     "mood": {
-                        "primary": mood_primary,
-                        "secondary": mood_secondary,
-                        "intensity": mood_intensity,
+                        "version": 2,
+                        "pleasantness": mood_pleasantness,
+                        "energy": mood_energy,
+                        "capture_mode": mood_capture_mode or "spontaneous",
+                        "labels": [_mood_label(item) for item in mood_label],
+                        **_params(
+                            stress=mood_stress,
+                            motivation=mood_motivation,
+                            functional_impact=mood_functional_impact,
+                            duration_minutes=mood_duration,
+                        ),
+                        "context_tags": list(mood_context),
+                        "body_cues": list(mood_body_cue),
+                        "regulation": list(mood_regulation),
                     }
                 }
-                if mood_primary is not None
+                if mood_pleasantness is not None
                 else {}
             ),
             **_params(at=at, value=value, unit=unit, notes=notes),

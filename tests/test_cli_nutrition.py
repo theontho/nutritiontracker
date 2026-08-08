@@ -330,6 +330,93 @@ def test_request_rejects_non_object_json():
     request.assert_not_called()
 
 
+def test_event_type_create_supports_mood_measurement_kind():
+    with patch(
+        "app.cli.client.APIClient.request",
+        return_value={"id": 4, "name": "Mood", "measurement_kind": "mood"},
+    ) as request:
+        result = runner.invoke(
+            cli,
+            ["events", "types", "create", "Mood", "--measurement-kind", "mood"],
+        )
+
+    assert result.exit_code == 0
+    request.assert_called_once_with(
+        "POST",
+        "/events/types",
+        json={"name": "Mood", "is_private": False, "measurement_kind": "mood"},
+    )
+
+
+def test_event_add_posts_independent_mood_dimensions_and_details():
+    with patch(
+        "app.cli.client.APIClient.request",
+        return_value={"id": 8},
+    ) as request:
+        result = runner.invoke(
+            cli,
+            [
+                "events",
+                "add",
+                "4",
+                "--date",
+                "2026-08-07",
+                "--mood-pleasantness",
+                "-2",
+                "--mood-energy",
+                "1",
+                "--mood-label",
+                "overwhelmed:3",
+                "--mood-label",
+                "tired",
+                "--mood-capture-mode",
+                "scheduled",
+                "--mood-stress",
+                "3",
+                "--mood-context",
+                "work",
+                "--mood-regulation",
+                "reappraisal",
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    request.assert_called_once_with(
+        "POST",
+        "/events",
+        json={
+            "event_type_id": 4,
+            "date": "2026-08-07",
+            "mood": {
+                "version": 2,
+                "pleasantness": -2,
+                "energy": 1,
+                "capture_mode": "scheduled",
+                "labels": [
+                    {"category": "overwhelmed", "intensity": 3},
+                    {"category": "tired", "intensity": 2},
+                ],
+                "stress": 3,
+                "context_tags": ["work"],
+                "body_cues": [],
+                "regulation": ["reappraisal"],
+            },
+        },
+    )
+
+
+def test_event_add_rejects_mood_details_without_dimensions():
+    with patch("app.cli.client.APIClient.request") as request:
+        result = runner.invoke(
+            cli,
+            ["events", "add", "4", "--mood-label", "calm"],
+        )
+
+    assert result.exit_code == 2
+    assert "mood detail options require" in result.output
+    request.assert_not_called()
+
+
 def test_food_create_posts_json():
     body = {"name": "My oats", "source": "custom"}
     with patch(

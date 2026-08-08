@@ -51,20 +51,26 @@ curl -X POST http://127.0.0.1:8000/events \
 ```
 
 Event types may declare a structured `measurement_kind`: `generic`,
-`bristol_stool`, `urine_color`, or `mood`. Mood events use named feelings
-rather than a single score. They require a primary category, allow one
-secondary category, and record mild (`1`), moderate (`2`), or strong (`3`)
-intensity. The API derives valence and energy from the primary category:
+`bristol_stool`, `urine_color`, or `mood`. Mood events use a hybrid model:
+pleasantness (`-3` to `3`) and energy (`-2` to `2`) are independent required
+dimensions, while co-occurring labels and their mild (`1`), moderate (`2`), or
+strong (`3`) intensities are optional. Stress, motivation, functional impact,
+context, body cues, regulation strategies, duration, and capture mode add
+progressively disclosed context without lengthening the default check-in:
 
 ```bash
-nutritiontracker events add 8 --mood-primary overwhelmed \
-  --mood-secondary tired --mood-intensity 2 \
+nutritiontracker events add 8 --mood-pleasantness=-2 --mood-energy=1 \
+  --mood-label overwhelmed:3 --mood-label tired:2 \
+  --mood-stress 3 --mood-motivation=-1 --mood-context work \
   --notes "Low executive function after a demanding afternoon"
 ```
 
-Supported mood categories are happy, excited, hopeful, proud, calm, content,
-grateful, relieved, sad, low, tired, lonely, bored, anxious, angry,
-overwhelmed, disgusted, surprised, and confused.
+The default `spontaneous` capture mode can be changed to `scheduled` for a
+prompted check-in or `reconstructed` for a later day reconstruction. Multiple
+labels preserve mixed emotions rather than forcing one dominant category.
+Dimensions are recorded directly instead of inferred from English emotion
+words, because the same label can carry different energy or pleasantness in
+different contexts and languages.
 
 `value` is optional — some events are just "this happened" — and `0` is
 treated as a real measurement rather than a missing one. Each event stores the
