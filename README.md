@@ -56,7 +56,9 @@ pleasantness (`-3` to `3`) and energy (`-2` to `2`) are independent required
 dimensions, while co-occurring labels and their mild (`1`), moderate (`2`), or
 strong (`3`) intensities are optional. Stress, motivation, functional impact,
 context, body cues, regulation strategies, duration, and capture mode add
-progressively disclosed context without lengthening the default check-in:
+progressively disclosed context without lengthening the default check-in.
+new entries record `dimension_source` as `reported`, while migrated categorical
+entries are marked `legacy_inferred`.
 
 ```bash
 nutritiontracker events add 8 --mood-pleasantness=-2 --mood-energy=1 \

@@ -170,6 +170,7 @@ def test_mood_events_preserve_dimensions_labels_and_optional_context(client):
         "pleasantness": -2,
         "energy": 1,
         "capture_mode": "scheduled",
+        "dimension_source": "reported",
         "labels": [
             {"category": "overwhelmed", "intensity": 3},
             {"category": "tired", "intensity": 2},
@@ -209,6 +210,7 @@ def test_legacy_mood_payload_is_upgraded_for_compatibility(client):
         "pleasantness": -2,
         "energy": 2,
         "capture_mode": "spontaneous",
+        "dimension_source": "legacy_inferred",
         "labels": [
             {"category": "overwhelmed", "intensity": 2},
             {"category": "tired", "intensity": 2},

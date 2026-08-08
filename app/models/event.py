@@ -76,6 +76,7 @@ MoodCategory = Literal[
     "confused",
 ]
 MoodCaptureMode = Literal["spontaneous", "scheduled", "reconstructed"]
+MoodDimensionSource = Literal["reported", "legacy_inferred"]
 MoodRegulation = Literal[
     "situation_selection",
     "situation_change",
@@ -119,6 +120,7 @@ class MoodState(BaseModel):
     pleasantness: MoodPleasantness
     energy: MoodEnergy
     capture_mode: MoodCaptureMode = "spontaneous"
+    dimension_source: MoodDimensionSource = "reported"
     labels: list[MoodLabel] = Field(default_factory=list, max_length=6)
     stress: Literal[0, 1, 2, 3, 4] | None = None
     motivation: Literal[-2, -1, 0, 1, 2] | None = None
@@ -151,6 +153,7 @@ class MoodState(BaseModel):
             "pleasantness": pleasantness,
             "energy": energy,
             "capture_mode": "spontaneous",
+            "dimension_source": "legacy_inferred",
             "labels": labels,
         }
 
