@@ -14,6 +14,7 @@ from app.cli.nutrition import (
     _number,
     _today,
 )
+from app.models.event import MOOD_CATEGORIES
 
 
 def _params(**values: Any) -> dict[str, Any]:
@@ -502,6 +503,9 @@ def get_event(context: CLIContext, event_id: int) -> None:
 @click.option("--value", type=float)
 @click.option("--unit")
 @click.option("--notes")
+@click.option("--mood-primary", type=click.Choice(MOOD_CATEGORIES))
+@click.option("--mood-secondary", type=click.Choice(MOOD_CATEGORIES))
+@click.option("--mood-intensity", type=click.IntRange(1, 3), default=2)
 @click.pass_obj
 def add_event(
     context: CLIContext,
@@ -511,6 +515,9 @@ def add_event(
     value: float | None,
     unit: str | None,
     notes: str | None,
+    mood_primary: str | None,
+    mood_secondary: str | None,
+    mood_intensity: int,
 ) -> None:
     """Log an event."""
     result = context.client.request(
@@ -519,6 +526,17 @@ def add_event(
         json={
             "event_type_id": event_type_id,
             "date": _date_string(event_date),
+            **(
+                {
+                    "mood": {
+                        "primary": mood_primary,
+                        "secondary": mood_secondary,
+                        "intensity": mood_intensity,
+                    }
+                }
+                if mood_primary is not None
+                else {}
+            ),
             **_params(at=at, value=value, unit=unit, notes=notes),
         },
     )

@@ -379,6 +379,9 @@ def init_schema(conn: sqlite3.Connection) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL DEFAULT 1,
             is_private INTEGER NOT NULL DEFAULT 0 CHECK(is_private IN (0, 1)),
+            measurement_kind TEXT NOT NULL DEFAULT 'generic'
+                CHECK(measurement_kind IN
+                    ('generic', 'bristol_stool', 'urine_color', 'mood')),
             name TEXT NOT NULL,
             unit TEXT,
             notes TEXT,
@@ -398,6 +401,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
             value REAL,
             unit TEXT,
             notes TEXT,
+            mood TEXT CHECK(mood IS NULL OR json_valid(mood)),
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         );

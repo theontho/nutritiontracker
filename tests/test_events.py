@@ -130,6 +130,95 @@ def test_event_type_privacy_can_be_updated(client):
     assert updated.json()["is_private"] is True
 
 
+def test_mood_events_preserve_category_blend_intensity_and_dimensions(client):
+    event_type = client.post(
+        "/events/types",
+        json={"name": "Mood", "measurement_kind": "mood"},
+    ).json()
+
+    response = client.post(
+        "/events",
+        json={
+            "event_type_id": event_type["id"],
+            "date": "2026-08-07",
+            "at": "13:44",
+            "mood": {
+                "primary": "overwhelmed",
+                "secondary": "tired",
+                "intensity": 2,
+            },
+            "notes": "Executive functioning is low.",
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    event = response.json()
+    assert event["event_type_measurement_kind"] == "mood"
+    assert event["mood"] == {
+        "primary": "overwhelmed",
+        "secondary": "tired",
+        "intensity": 2,
+        "valence": "negative",
+        "energy": "high",
+    }
+    assert client.get(f"/events/{event['id']}").json()["mood"] == event["mood"]
+
+
+@pytest.mark.parametrize(
+    "payload, message",
+    [
+        ({}, "require structured mood"),
+        ({"value": 2}, "do not use value"),
+        (
+            {"mood": {"primary": "happy", "secondary": "happy"}},
+            "secondary mood must differ",
+        ),
+    ],
+)
+def test_mood_events_reject_incomplete_or_conflicting_data(client, payload, message):
+    event_type = client.post(
+        "/events/types",
+        json={"name": "Mood", "measurement_kind": "mood"},
+    ).json()
+    response = client.post(
+        "/events",
+        json={"event_type_id": event_type["id"], "date": "2026-08-07", **payload},
+    )
+
+    assert response.status_code == 422
+    assert message in response.text
+
+
+def test_generic_events_reject_structured_mood_data(client):
+    event_type = _make_type(client, name="Journal marker")
+    response = client.post(
+        "/events",
+        json={
+            "event_type_id": event_type["id"],
+            "date": "2026-08-07",
+            "mood": {"primary": "calm"},
+        },
+    )
+
+    assert response.status_code == 422
+    assert "requires a mood event type" in response.text
+
+
+def test_measurement_kind_cannot_change_after_logging(client):
+    event_type = _make_type(client, name="Journal marker", unit=None)
+    client.post(
+        "/events",
+        json={"event_type_id": event_type["id"], "date": "2026-08-07"},
+    )
+
+    response = client.patch(
+        f"/events/types/{event_type['id']}",
+        json={"measurement_kind": "mood"},
+    )
+
+    assert response.status_code == 409
+
+
 def test_duplicate_type_names_are_rejected(client):
     _make_type(client, name="Meditation")
     response = client.post("/events/types", json={"name": "Meditation"})

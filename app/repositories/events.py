@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import builtins
+import json
 import sqlite3
 
 
@@ -17,13 +19,17 @@ class EventTypeRepository:
         unit: str | None,
         notes: str | None,
         is_private: bool = False,
+        measurement_kind: str = "generic",
     ) -> int:
         cur = self.conn.execute(
-            """INSERT INTO event_types (user_id, name, unit, notes, is_private)
-               VALUES (?, ?, ?, ?, ?)""",
-            (user_id, name, unit, notes, int(is_private)),
+            """INSERT INTO event_types
+               (user_id, name, unit, notes, is_private, measurement_kind)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (user_id, name, unit, notes, int(is_private), measurement_kind),
         )
         self.conn.commit()
+        if cur.lastrowid is None:
+            raise RuntimeError("Event type insert did not return an id")
         return cur.lastrowid
 
     def get(self, type_id: int, *, user_id: int) -> dict | None:
@@ -48,7 +54,7 @@ class EventTypeRepository:
         return [dict(row) for row in rows]
 
     def update(self, type_id: int, *, user_id: int, **updates) -> None:
-        allowed = {"name", "unit", "notes", "is_private"}
+        allowed = {"name", "unit", "notes", "is_private", "measurement_kind"}
         fields = {k: v for k, v in updates.items() if k in allowed}
         if "is_private" in fields:
             fields["is_private"] = int(fields["is_private"])
@@ -88,7 +94,8 @@ class EventRepository:
 
     _SELECT = """
         SELECT e.*, t.name AS event_type_name,
-               t.is_private AS event_type_is_private
+               t.is_private AS event_type_is_private,
+               t.measurement_kind AS event_type_measurement_kind
         FROM events e
         JOIN event_types t ON t.id = e.event_type_id
     """
@@ -103,13 +110,26 @@ class EventRepository:
         value: float | None,
         unit: str | None,
         notes: str | None,
+        mood: dict | None = None,
     ) -> int:
         cur = self.conn.execute(
-            """INSERT INTO events (user_id, event_type_id, date, at, value, unit, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (user_id, event_type_id, date, at, value, unit, notes),
+            """INSERT INTO events
+               (user_id, event_type_id, date, at, value, unit, notes, mood)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                user_id,
+                event_type_id,
+                date,
+                at,
+                value,
+                unit,
+                notes,
+                json.dumps(mood) if mood is not None else None,
+            ),
         )
         self.conn.commit()
+        if cur.lastrowid is None:
+            raise RuntimeError("Event insert did not return an id")
         return cur.lastrowid
 
     def get(self, event_id: int, *, user_id: int) -> dict | None:
@@ -117,7 +137,7 @@ class EventRepository:
             f"{self._SELECT} WHERE e.id = ? AND e.user_id = ?",
             (event_id, user_id),
         ).fetchone()
-        return dict(row) if row else None
+        return self._event_row(row)
 
     def list(
         self,
@@ -130,7 +150,7 @@ class EventRepository:
         offset: int = 0,
     ) -> list[dict]:
         clauses = ["e.user_id = ?"]
-        params: list = [user_id]
+        params: builtins.list[object] = [user_id]
         if start is not None:
             clauses.append("e.date >= ?")
             params.append(start)
@@ -147,11 +167,13 @@ class EventRepository:
             "ORDER BY e.date DESC, e.at DESC, e.id DESC LIMIT ? OFFSET ?",
             (*params, limit, offset),
         ).fetchall()
-        return [dict(row) for row in rows]
+        return [event for row in rows if (event := self._event_row(row)) is not None]
 
     def update(self, event_id: int, *, user_id: int, **updates) -> None:
-        allowed = {"date", "at", "value", "unit", "notes"}
+        allowed = {"date", "at", "value", "unit", "notes", "mood"}
         fields = {k: v for k, v in updates.items() if k in allowed}
+        if "mood" in fields and fields["mood"] is not None:
+            fields["mood"] = json.dumps(fields["mood"])
         if not fields:
             return
         assignments = ", ".join(f"{k} = ?" for k in fields)
@@ -162,6 +184,14 @@ class EventRepository:
         )
         self.conn.commit()
 
+    @staticmethod
+    def _event_row(row: sqlite3.Row | None) -> dict | None:
+        if row is None:
+            return None
+        event = dict(row)
+        event["mood"] = json.loads(event["mood"]) if event["mood"] else None
+        return event
+
     def delete(self, event_id: int, *, user_id: int) -> None:
         self.conn.execute(
             "DELETE FROM events WHERE id = ? AND user_id = ?", (event_id, user_id)
@@ -170,7 +200,7 @@ class EventRepository:
 
     def summary(
         self, *, user_id: int, start: str | None = None, end: str | None = None
-    ) -> list[dict]:
+    ) -> builtins.list[dict]:
         """Per type and unit: how many events, and the total where measured.
 
         Grouped by unit as well as type because a type whose unit changed
@@ -179,7 +209,7 @@ class EventRepository:
         no value are counted separately rather than treated as zero.
         """
         clauses = ["e.user_id = ?"]
-        params: list = [user_id]
+        params: builtins.list[object] = [user_id]
         if start is not None:
             clauses.append("e.date >= ?")
             params.append(start)

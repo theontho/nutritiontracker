@@ -1,6 +1,95 @@
-from typing import Optional
+from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+EventMeasurementKind = Literal["generic", "bristol_stool", "urine_color", "mood"]
+MoodValence = Literal["positive", "negative", "mixed"]
+MoodEnergy = Literal["high", "low"]
+MOOD_CATEGORIES = (
+    "happy",
+    "excited",
+    "hopeful",
+    "proud",
+    "calm",
+    "content",
+    "grateful",
+    "relieved",
+    "sad",
+    "low",
+    "tired",
+    "lonely",
+    "bored",
+    "anxious",
+    "angry",
+    "overwhelmed",
+    "disgusted",
+    "surprised",
+    "confused",
+)
+MoodCategory = Literal[
+    "happy",
+    "excited",
+    "hopeful",
+    "proud",
+    "calm",
+    "content",
+    "grateful",
+    "relieved",
+    "sad",
+    "low",
+    "tired",
+    "lonely",
+    "bored",
+    "anxious",
+    "angry",
+    "overwhelmed",
+    "disgusted",
+    "surprised",
+    "confused",
+]
+
+_MOOD_DIMENSIONS: dict[MoodCategory, tuple[MoodValence, MoodEnergy]] = {
+    "happy": ("positive", "high"),
+    "excited": ("positive", "high"),
+    "hopeful": ("positive", "high"),
+    "proud": ("positive", "high"),
+    "calm": ("positive", "low"),
+    "content": ("positive", "low"),
+    "grateful": ("positive", "low"),
+    "relieved": ("positive", "low"),
+    "sad": ("negative", "low"),
+    "low": ("negative", "low"),
+    "tired": ("negative", "low"),
+    "lonely": ("negative", "low"),
+    "bored": ("negative", "low"),
+    "anxious": ("negative", "high"),
+    "angry": ("negative", "high"),
+    "overwhelmed": ("negative", "high"),
+    "disgusted": ("negative", "high"),
+    "surprised": ("mixed", "high"),
+    "confused": ("mixed", "low"),
+}
+
+
+class MoodState(BaseModel):
+    primary: MoodCategory
+    secondary: MoodCategory | None = None
+    intensity: Literal[1, 2, 3] = 2
+    valence: MoodValence | None = None
+    energy: MoodEnergy | None = None
+
+    @model_validator(mode="after")
+    def _normalize_dimensions(self) -> "MoodState":
+        if self.secondary == self.primary:
+            raise ValueError("secondary mood must differ from primary mood")
+        expected_valence, expected_energy = _MOOD_DIMENSIONS[self.primary]
+        if self.valence not in (None, expected_valence):
+            raise ValueError("mood valence does not match primary mood")
+        if self.energy not in (None, expected_energy):
+            raise ValueError("mood energy does not match primary mood")
+        self.valence = expected_valence
+        self.energy = expected_energy
+        return self
 
 
 def _require_content(value: str, field: str) -> str:
@@ -40,6 +129,7 @@ class EventTypeCreate(BaseModel):
     unit: Optional[str] = Field(default=None, max_length=50)
     notes: Optional[str] = None
     is_private: bool = False
+    measurement_kind: EventMeasurementKind = "generic"
 
     @field_validator("name")
     @classmethod
@@ -61,6 +151,7 @@ class EventTypeUpdate(BaseModel):
     unit: Optional[str] = Field(default=None, max_length=50)
     notes: Optional[str] = None
     is_private: Optional[bool] = None
+    measurement_kind: EventMeasurementKind | None = None
 
     @field_validator("name")
     @classmethod
@@ -77,6 +168,7 @@ class EventType(BaseModel):
     unit: Optional[str]
     notes: Optional[str]
     is_private: bool
+    measurement_kind: EventMeasurementKind
     created_at: str
     updated_at: str
 
@@ -90,6 +182,7 @@ class EventCreate(BaseModel):
     value: Optional[float] = None
     unit: Optional[str] = Field(default=None, max_length=50)
     notes: Optional[str] = None
+    mood: MoodState | None = None
 
     @field_validator("date")
     @classmethod
@@ -108,6 +201,7 @@ class EventUpdate(BaseModel):
     value: Optional[float] = None
     unit: Optional[str] = Field(default=None, max_length=50)
     notes: Optional[str] = None
+    mood: MoodState | None = None
 
     @field_validator("date")
     @classmethod
@@ -126,11 +220,13 @@ class Event(BaseModel):
     event_type_id: int
     event_type_name: str
     event_type_is_private: bool
+    event_type_measurement_kind: EventMeasurementKind
     date: str
     at: Optional[str]
     value: Optional[float]
     unit: Optional[str]
     notes: Optional[str]
+    mood: MoodState | None
     created_at: str
     updated_at: str
 

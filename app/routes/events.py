@@ -39,6 +39,8 @@ def create_event_type(request: Request, body: EventTypeCreate):
     its unit is whatever you measure it in.
     """
     user_id = current_user_id(request)
+    if body.measurement_kind == "mood" and body.unit is not None:
+        raise HTTPException(422, "Mood event types do not use a numeric unit")
     repo = _types(request)
     try:
         type_id = repo.create(
@@ -47,6 +49,7 @@ def create_event_type(request: Request, body: EventTypeCreate):
             unit=body.unit,
             notes=body.notes,
             is_private=body.is_private,
+            measurement_kind=body.measurement_kind,
         )
     except sqlite3.IntegrityError:
         raise HTTPException(
@@ -85,8 +88,21 @@ def update_event_type(request: Request, type_id: int, body: EventTypeUpdate):
     updates = body.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
-    if repo.get(type_id, user_id=user_id) is None:
+    existing = repo.get(type_id, user_id=user_id)
+    if existing is None:
         raise HTTPException(status_code=404, detail="Event type not found")
+    next_kind = updates.get("measurement_kind", existing["measurement_kind"])
+    next_unit = updates.get("unit", existing["unit"])
+    if next_kind == "mood" and next_unit is not None:
+        raise HTTPException(422, "Mood event types do not use a numeric unit")
+    if (
+        "measurement_kind" in updates
+        and updates["measurement_kind"] != existing["measurement_kind"]
+        and repo.count_events(type_id, user_id=user_id)
+    ):
+        raise HTTPException(
+            409, "Cannot change measurement kind after events have been logged"
+        )
     try:
         repo.update(type_id, user_id=user_id, **updates)
     except sqlite3.IntegrityError:
@@ -162,6 +178,13 @@ def create_event(request: Request, body: EventCreate):
         raise HTTPException(status_code=404, detail="Event type not found")
 
     fields = body.model_dump(exclude_unset=True)
+    if event_type["measurement_kind"] == "mood":
+        if body.value is not None or body.unit is not None:
+            raise HTTPException(422, "Mood events do not use value or unit")
+        if body.mood is None:
+            raise HTTPException(422, "Mood events require structured mood data")
+    elif "mood" in fields:
+        raise HTTPException(422, "Structured mood data requires a mood event type")
     unit = body.unit if "unit" in fields else event_type["unit"]
 
     repo = _events(request)
@@ -173,6 +196,7 @@ def create_event(request: Request, body: EventCreate):
         value=body.value,
         unit=unit,
         notes=body.notes,
+        mood=body.mood.model_dump(mode="json") if body.mood is not None else None,
     )
     return repo.get(event_id, user_id=user_id)
 
@@ -214,8 +238,16 @@ def update_event(request: Request, event_id: int, body: EventUpdate):
     updates = body.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
-    if repo.get(event_id, user_id=user_id) is None:
+    existing = repo.get(event_id, user_id=user_id)
+    if existing is None:
         raise HTTPException(status_code=404, detail="Event not found")
+    if existing["event_type_measurement_kind"] == "mood":
+        if "mood" in updates and body.mood is None:
+            raise HTTPException(422, "Mood events require structured mood data")
+        if body.value is not None or body.unit is not None:
+            raise HTTPException(422, "Mood events do not use value or unit")
+    elif "mood" in updates:
+        raise HTTPException(422, "Structured mood data requires a mood event type")
     repo.update(event_id, user_id=user_id, **updates)
     return repo.get(event_id, user_id=user_id)
 

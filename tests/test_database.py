@@ -54,3 +54,18 @@ def test_schema_records_definition_privacy_flags():
         assert columns["is_private"][3] == 1
         assert columns["is_private"][4] == "0"
     conn.close()
+
+
+def test_schema_records_structured_mood_events():
+    import sqlite3
+
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    type_columns = {
+        row[1]: row for row in conn.execute("PRAGMA table_info(event_types)")
+    }
+    event_columns = {row[1]: row for row in conn.execute("PRAGMA table_info(events)")}
+    conn.close()
+
+    assert type_columns["measurement_kind"][4] == "'generic'"
+    assert "mood" in event_columns

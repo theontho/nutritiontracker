@@ -50,6 +50,22 @@ curl -X POST http://127.0.0.1:8000/events \
   -d '{"event_type_id":1,"date":"2026-08-02","at":"19:30","value":5,"notes":"panel at 18 inches"}'
 ```
 
+Event types may declare a structured `measurement_kind`: `generic`,
+`bristol_stool`, `urine_color`, or `mood`. Mood events use named feelings
+rather than a single score. They require a primary category, allow one
+secondary category, and record mild (`1`), moderate (`2`), or strong (`3`)
+intensity. The API derives valence and energy from the primary category:
+
+```bash
+nutritiontracker events add 8 --mood-primary overwhelmed \
+  --mood-secondary tired --mood-intensity 2 \
+  --notes "Low executive function after a demanding afternoon"
+```
+
+Supported mood categories are happy, excited, hopeful, proud, calm, content,
+grateful, relieved, sad, low, tired, lonely, bored, anxious, angry,
+overwhelmed, disgusted, surprised, and confused.
+
 `value` is optional — some events are just "this happened" — and `0` is
 treated as a real measurement rather than a missing one. Each event stores the
 unit it was logged with, so editing a type's unit later does not silently
